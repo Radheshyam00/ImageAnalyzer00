@@ -4,6 +4,7 @@ import string
 import hashlib
 import binascii
 from pymongo import MongoClient
+from dotenv import load_dotenv
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import io
@@ -11,7 +12,7 @@ import struct
 import base64
 import json
 import os
-import datetime
+from datetime import datetime, timedelta, timezone
 import requests
 import time
 import piexif
@@ -24,6 +25,8 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 from collections import defaultdict
+
+load_dotenv()
 
 
 def calculate_file_hash(file_bytes, algorithm='md5'):
@@ -748,6 +751,7 @@ def display_virustotal_results(vt_result):
     except Exception as e:
         st.error(f"❌ Error processing VirusTotal results: {str(e)}")
 
+
 def main():
     st.set_page_config(
         page_title="Image Metadata & Security Analyzer",
@@ -758,16 +762,39 @@ def main():
     st.sidebar.markdown("### 📋 Navigation")
     page = st.sidebar.selectbox("Choose a Tool", 
                    ["🔍 Advanced Image Metadata Analyzer", 
-                    "⚙️ Reverse Image Analyzer", 
+                    # "⚙️ Reverse Image Analyzer", 
                     "📞 File Inspector Pro", 
                     "📊 Advanced Image Forensics Analyzer",
                     "🔧 Settings",
                     "📱 Aadhaar-Mobile Link Checker"])
     
     if page == "🔍 Advanced Image Metadata Analyzer":
+            
+            # Custom CSS for modern UI
+            st.markdown("""
+            <style>
+                .main-header {
+                    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                    padding: 2rem;
+                    border-radius: 10px;
+                    color: white;
+                    text-align: center;
+                    margin-bottom: 2rem;
+                }
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Header
+            st.markdown("""
+            <div class="main-header">
+                <h1>🔍 Advanced Image Metadata & Security Analyzer</h1>
+                <p>Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.</p>
+            </div>
+            """, unsafe_allow_html=True)
     
-            st.title("🔍 Advanced Image Metadata & Security Analyzer")
-            st.markdown("Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.")
+            # st.title("🔍 Advanced Image Metadata & Security Analyzer")
+            # st.markdown("Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.")
             
             # VirusTotal API Key input
             st.sidebar.header("🔐 VirusTotal Configuration")
@@ -798,39 +825,46 @@ def main():
                 file_bytes = uploaded_file.read()
                 uploaded_file.seek(0)  # Reset file pointer
                 
+                st.markdown("---")
                 # Calculate hashes early for VirusTotal
                 md5_hash = calculate_file_hash(file_bytes, 'md5')
                 sha256_hash = calculate_file_hash(file_bytes, 'sha256')
                 
-                # Display image
-                col1, col2 = st.columns([1, 2])
-                
-                with col1:
-                    try:
-                        image = Image.open(uploaded_file)
-                        st.image(image, caption=uploaded_file.name, use_column_width=True)
-                    except Exception as e:
-                        st.error(f"Could not display image: {e}")
-                        image = None
-                
-                with col2:
-                    # Basic file info
-                    st.subheader("📁 Basic File Info")
-                    basic_info = {
-                        "File Name": uploaded_file.name,
-                        "File Size": f"{len(file_bytes):,} bytes ({len(file_bytes)/1024:.1f} KB)",
-                        "File Type": uploaded_file.type,
-                        "File Extension": os.path.splitext(uploaded_file.name)[1].lower(),
-                        "MIME Type": uploaded_file.type,
-                        "MD5 Checksum": md5_hash,
-                        "SHA256 Checksum": sha256_hash,
-                        "Raw Header": get_raw_header(file_bytes, 32)
-                    }
+                with st.expander("📁 Basic File Info", expanded=False):
+                    # Display image
+                    col1, col3, col2 = st.columns([1, 0.1, 1.5])
                     
-                    for key, value in basic_info.items():
-                        st.text(f"{key}: {value}")
+                    with col1:
+                        try:
+                            image = Image.open(uploaded_file)
+                            st.image(image, caption=uploaded_file.name, use_column_width=True)
+                        except Exception as e:
+                            st.error(f"Could not display image: {e}")
+                            image = None
+                    with col3:
+                        st.markdown("""
+                        <div style='height: 300px; border-left: 2px solid #ccc; margin: 10px;'></div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Basic file info
+                        # st.subheader("📁 Basic File Info")
+                        basic_info = {
+                            "File Name": uploaded_file.name,
+                            "File Size": f"{len(file_bytes):,} bytes ({len(file_bytes)/1024:.1f} KB)",
+                            "File Type": uploaded_file.type,
+                            "File Extension": os.path.splitext(uploaded_file.name)[1].lower(),
+                            "MIME Type": uploaded_file.type,
+                            "MD5 Checksum": md5_hash,
+                            "SHA256 Checksum": sha256_hash,
+                            "Raw Header": get_raw_header(file_bytes, 32)
+                        }
+                        
+                        for key, value in basic_info.items():
+                            st.text(f"{key}: {value}")
                 
                 # VirusTotal Malware Check - Priority section
+                st.markdown("---")
                 st.subheader("🛡️ Malware & Security Analysis")
                 
                 if st.button("🔍 Scan with VirusTotal", type="primary"):
@@ -843,6 +877,7 @@ def main():
                     display_virustotal_results(st.session_state['vt_result'])
                 
                 # Image properties
+                st.markdown("---")
                 if image:
                     st.subheader("🖼️ Image Properties")
                     
@@ -874,6 +909,7 @@ def main():
                             st.text(f"{key}: {value}")
                 
                 # JFIF Metadata
+                st.markdown("---")
                 st.subheader("🏷️ JFIF Metadata")
                 jfif_info = extract_jfif_info(file_bytes)
                 if jfif_info:
@@ -883,6 +919,7 @@ def main():
                     st.text("No JFIF metadata found")
                 
                 # ICC Color Profile
+                st.markdown("---")
                 st.subheader("🎨 ICC Color Profile Metadata")
                 icc_info = extract_icc_profile(file_bytes)
                 if icc_info:
@@ -900,6 +937,7 @@ def main():
                     st.text("No ICC color profile found")
                 
                 # EXIF Metadata
+                st.markdown("---")
                 st.subheader("🧬 EXIF Metadata")
                 if image:
                     exif_data = extract_exif_data(image)
@@ -932,6 +970,7 @@ def main():
                     st.text("Could not extract EXIF data - image failed to load")
                 
                 # Steganographic indicators
+                st.markdown("---")
                 st.subheader("🔐 Steganographic / Hidden Indicators")
                 steg_indicators = check_steganographic_indicators(file_bytes, uploaded_file.name)
                 if steg_indicators:
@@ -944,6 +983,7 @@ def main():
                     st.text("No suspicious indicators detected")
                 
                 # Header analysis
+                st.markdown("---")
                 st.subheader("🔎 Header Analysis")
                 header_analysis = analyze_header_validity(file_bytes, uploaded_file.type)
                 for key, value in header_analysis.items():
@@ -961,6 +1001,7 @@ def main():
                 
                 
                 # Download full report
+                st.markdown("---")
                 st.subheader("📄 Export Report")
                 if st.button("Generate Comprehensive Report"):
                     report = {
@@ -995,7 +1036,8 @@ def main():
         # )
 
         # MongoDB Configuration
-        MONGO_URI = "mongodb+srv://radheshyamjanwa666:TPo5T91ldKNiWWCM@cluster0.bdfxa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+        
+        MONGO_URI = os.getenv("MONGO_URI")
 
         @st.cache_resource
         def init_mongodb():
@@ -1027,7 +1069,7 @@ def main():
             
             .info-card {
                 background: #f8f9fa;
-                padding: 1.5rem;
+                padding: 0.5rem;
                 border-radius: 8px;
                 border-left: 4px solid #667eea;
                 margin: 1rem 0;
@@ -1083,7 +1125,7 @@ def main():
                 # Create document
                 document = {
                     'filename': filename,
-                    'upload_date': datetime.datetime.utcnow(),
+                    'upload_date': datetime.now(timezone.utc),
                     'file_size': len(file_bytes),
                     'file_type': file_info,
                     'md5_hash': hashes[0],
@@ -1145,7 +1187,7 @@ def main():
                 collection = db['file_analyses']
                 total_files = collection.count_documents({})
                 recent_files = collection.count_documents({
-                    'upload_date': {'$gte': datetime.datetime.utcnow() - datetime.timedelta(days=7)}
+                    'upload_date': {'$gte': datetime.now(timezone.utc) - timedelta(days=7)}
                 })
                 
                 # Get file type distribution
@@ -1196,7 +1238,7 @@ def main():
             return list(dict.fromkeys(result))
 
         @st.cache_data
-        def calculate_file_hash(file_bytes):
+        def calculate_file_hashed(file_bytes):
             """Calculate multiple hash values for the file"""
             md5 = hashlib.md5(file_bytes).hexdigest()
             sha1 = hashlib.sha1(file_bytes).hexdigest()
@@ -1323,10 +1365,10 @@ def main():
 
         with tab_main:
             # Main content
-            col1, col2 = st.columns([2, 1])
+            # col1, col2 = st.columns([2, 1])
 
-            with col1:
-                uploaded_file = st.file_uploader(
+            # with col1:
+            uploaded_file = st.file_uploader(
                     "📁 Upload a file for analysis", 
                     type=None,
                     help="Upload any file type for binary analysis"
@@ -1338,36 +1380,103 @@ def main():
                     file_bytes = uploaded_file.read()
                 
                 # File summary
-                with col2:
-                    st.markdown("""
-                    <div class="info-card">
-                        <h3>📋 File Information</h3>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # with col2:
+                #     st.markdown("""
+                #     <div class="info-card">
+                #         <h3>📋 File Information</h3>
+                #     </div>
+                #     """, unsafe_allow_html=True)
                     
-                    col2_1, col2_2 = st.columns(2)
+                    # col2_1, col2_2 = st.columns(2)
                     
-                    with col2_1:
-                        st.metric("📄 Size", f"{len(file_bytes):,} bytes")
-                        file_type = get_file_type_info(file_bytes, uploaded_file.name)
-                        st.metric("🎯 Type", file_type)
+                    # with col2_1:
+                        # st.metric("📄 Size", f"{len(file_bytes):,} bytes")
+                        # file_type = get_file_type_info(file_bytes, uploaded_file.name)
+                        # st.metric("🎯 Type", file_type)
                     
-                    with col2_2:
-                        entropy = calculate_entropy(file_bytes)
-                        st.metric("📈 Entropy", f"{entropy}")
+                    # with col2_2:
+                        # entropy = calculate_entropy(file_bytes)
+                        # st.metric("📈 Entropy", f"{entropy}")
                         
-                        null_count = file_bytes.count(0)
-                        null_percent = (null_count / len(file_bytes)) * 100 if file_bytes else 0
-                        st.metric("🔳 Null %", f"{null_percent:.1f}%")
+                        # null_count = file_bytes.count(0)
+                        # null_percent = (null_count / len(file_bytes)) * 100 if file_bytes else 0
+                        # st.metric("🔳 Null %", f"{null_percent:.1f}%")
                 
-                with col1:
+                # with col1:
+                    st.markdown("---")
                     st.markdown(f"**📁 Filename:** `{uploaded_file.name}`")
                     
                     # Hash values
                     if show_hashes:
-                        with st.expander("🔐 File Hashes", expanded=False):
+                        with st.expander("📁 Basic File Info", expanded=False):
+                            if file_bytes:
+                                st.markdown("""
+                                <div class="info-card">
+                                    <h3>📋 File Information</h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                                
+                                with col_stat1:
+                                    st.metric("📄 Size", f"{len(file_bytes):,} bytes")
+                                    file_type = get_file_type_info(file_bytes, uploaded_file.name)
+                                
+                                with col_stat2:
+                                    st.metric("🎯 Type", file_type)
+                                
+                                with col_stat3:
+                                    entropy = calculate_entropy(file_bytes)
+                                    st.metric("📈 Entropy", f"{entropy}")
+                                
+                                with col_stat4:
+                                    null_count = file_bytes.count(0)
+                                    null_percent = (null_count / len(file_bytes)) * 100 if file_bytes else 0
+                                    st.metric("🔳 Null %", f"{null_percent:.1f}%")
+
+                            if show_stats:
+                                st.markdown("---")
+                                # st.subheader("📊 Byte Statistics")
+                                st.markdown("""
+                                <div class="info-card">
+                                    <h3>📊 Byte Statistics</h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                if file_bytes:
+                                    col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                                    
+                                    with col_stat1:
+                                        printable_count = sum(1 for b in file_bytes if 32 <= b <= 126)
+                                        st.metric("Printable", f"{printable_count:,}")
+                                    
+                                    with col_stat2:
+                                        control_count = sum(1 for b in file_bytes if b < 32)
+                                        st.metric("Control", f"{control_count:,}")
+                                    
+                                    with col_stat3:
+                                        extended_count = sum(1 for b in file_bytes if b > 126)
+                                        st.metric("Extended", f"{extended_count:,}")
+                                    
+                                    with col_stat4:
+                                        unique_bytes = len(set(file_bytes))
+                                        st.metric("Unique", f"{unique_bytes}")
+                            # st.metric("📄 Size", f"{len(file_bytes):,} bytes")
+                            # file_type = get_file_type_info(file_bytes, uploaded_file.name)
+                            # st.metric("🎯 Type", file_type)
+                            # entropy = calculate_entropy(file_bytes)
+                            # st.metric("📈 Entropy", f"{entropy}")
+                            
+                            # null_count = file_bytes.count(0)
+                            # null_percent = (null_count / len(file_bytes)) * 100 if file_bytes else 0
+                            # st.metric("🔳 Null %", f"{null_percent:.1f}%")
                             with st.spinner("Calculating hashes..."):
-                                hashes = calculate_file_hash(file_bytes)
+                                st.markdown("---")
+                                st.markdown("""
+                                <div class="info-card">
+                                    <h3>🔐 File Hashes</h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                hashes = calculate_file_hashed(file_bytes)
                             
                             st.code(f"MD5:    {hashes[0]}")
                             st.code(f"SHA1:   {hashes[1]}")
@@ -1399,29 +1508,32 @@ def main():
                                 st.success(f"✅ Analysis saved! Document ID: {doc_id}")
                             else:
                                 st.error("❌ Failed to save analysis")
+                    st.markdown("---")
                 
                 # Rest of the analysis interface (keeping original structure)
-                if show_stats:
-                    st.subheader("📊 Byte Statistics")
+                # if show_stats:
+                #     st.markdown("---")
+                #     st.subheader("📊 Byte Statistics")
                     
-                    if file_bytes:
-                        col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                #     if file_bytes:
+                #         col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
                         
-                        with col_stat1:
-                            printable_count = sum(1 for b in file_bytes if 32 <= b <= 126)
-                            st.metric("Printable", f"{printable_count:,}")
+                #         with col_stat1:
+                #             printable_count = sum(1 for b in file_bytes if 32 <= b <= 126)
+                #             st.metric("Printable", f"{printable_count:,}")
                         
-                        with col_stat2:
-                            control_count = sum(1 for b in file_bytes if b < 32)
-                            st.metric("Control", f"{control_count:,}")
+                #         with col_stat2:
+                #             control_count = sum(1 for b in file_bytes if b < 32)
+                #             st.metric("Control", f"{control_count:,}")
                         
-                        with col_stat3:
-                            extended_count = sum(1 for b in file_bytes if b > 126)
-                            st.metric("Extended", f"{extended_count:,}")
+                #         with col_stat3:
+                #             extended_count = sum(1 for b in file_bytes if b > 126)
+                #             st.metric("Extended", f"{extended_count:,}")
                         
-                        with col_stat4:
-                            unique_bytes = len(set(file_bytes))
-                            st.metric("Unique", f"{unique_bytes}")
+                #         with col_stat4:
+                #             unique_bytes = len(set(file_bytes))
+                #             st.metric("Unique", f"{unique_bytes}")
+                #         st.markdown("---")
 
                 # Tabbed interface for different views
                 subtab1, subtab2, subtab3, subtab4, subtab5 = st.tabs(["🔢 Hex View", "✏️ Hex Editor", "🧵 Strings", "📝 Text Editor", "📊 Raw Data"])
@@ -1713,6 +1825,14 @@ def main():
                 background-color: #ff4b4b;
                 color: white;
             }
+            .main-header {
+                    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                    padding: 2rem;
+                    border-radius: 10px;
+                    color: white;
+                    text-align: center;
+                    margin-bottom: 2rem;
+            }
             .metric-card {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 padding: 20px;
@@ -1949,8 +2069,15 @@ def main():
 
         # Main application
         def main():
-            st.title("🔍 Advanced Image Forensics Analyzer")
-            st.markdown("### Professional-grade image authentication and tampering detection")
+
+            st.markdown("""
+            <div class="main-header">
+                <h1>🔍 Advanced Image Metadata & Security Analyzer</h1>
+                <p>Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            # st.title("🔍 Advanced Image Forensics Analyzer")
+            # st.markdown("### Professional-grade image authentication and tampering detection")
             
             # Sidebar for settings
             with st.sidebar:
@@ -2271,7 +2398,7 @@ def main():
                     
                     if generate_report:
                         report_data = {
-                            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "image_info": {
                                 "filename": uploaded_file.name,
                                 "size": f"{image.size[0]}x{image.size[1]}",
@@ -2310,7 +2437,7 @@ def main():
                             st.download_button(
                                 label="Download JSON Report",
                                 data=report_json,
-                                file_name=f"forensic_report_{uploaded_file.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                                file_name=f"forensic_report_{uploaded_file.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                                 mime="application/json"
                             )
                     else:
