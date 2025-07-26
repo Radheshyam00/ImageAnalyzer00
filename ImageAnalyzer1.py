@@ -2112,35 +2112,37 @@ def main():
                 image = Image.open(uploaded_file).convert("RGB")
                 uploaded_file.seek(0)
                 img_bytes = uploaded_file.read()
+                st.markdown("---")
                 
                 # Image overview
-                col1, col2, col3 = st.columns([2, 1, 1])
-                with col1:
-                    st.image(image, caption="Original Image")
-                
-                with col2:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4>📏 Image Info</h4>
-                        <p><strong>Size:</strong> {image.size[0]} × {image.size[1]}</p>
-                        <p><strong>Format:</strong> {uploaded_file.type}</p>
-                        <p><strong>File Size:</strong> {len(img_bytes) / 1024:.1f} KB</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col3:
-                    # Quick authenticity score
-                    authenticity_score = np.random.randint(60, 95)  # Placeholder
-                    color = "green" if authenticity_score > 80 else "orange" if authenticity_score > 60 else "red"
+                with st.expander("📁 Basic File Info", expanded=False):
+                    col1, col2, col3 = st.columns([1, 1, 1])
+                    with col1:
+                        st.image(image, caption="Original Image")
                     
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4>🛡️ Authenticity Score</h4>
-                        <h2 style="color: {color};">{authenticity_score}%</h2>
-                        <p>Preliminary assessment</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
+                    with col2:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h4>📏 Image Info</h4>
+                            <p><strong>Size:</strong> {image.size[0]} × {image.size[1]}</p>
+                            <p><strong>Format:</strong> {uploaded_file.type}</p>
+                            <p><strong>File Size:</strong> {len(img_bytes) / 1024:.1f} KB</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col3:
+                        # Quick authenticity score
+                        authenticity_score = np.random.randint(60, 95)  # Placeholder
+                        color = "green" if authenticity_score > 80 else "orange" if authenticity_score > 60 else "red"
+                        
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h4>🛡️ Authenticity Score</h4>
+                            <h2 style="color: {color};">{authenticity_score}%</h2>
+                            <p>Preliminary assessment</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                st.markdown("---")
                 # Analysis tabs
                 tab1, tab2, tab3, tab4, tab5 = st.tabs([
                     "🔍 Tampering Detection",
@@ -2156,41 +2158,45 @@ def main():
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.subheader("Error Level Analysis (ELA)")
-                        ela_results = perform_ela(image)
+                        with st.expander("Error Level Analysis (ELA)", expanded=False):
+                            st.subheader("Error Level Analysis (ELA)")
+                            ela_results = perform_ela(image)
+                            
+                            ela_quality = st.selectbox("ELA Quality", ["Q70", "Q80", "Q90", "Q95"])
+                            st.image(ela_results[ela_quality], caption=f"ELA at {ela_quality}")
+                            
+                            if show_confidence:
+                                st.info("🔍 Look for bright areas indicating potential editing")
                         
-                        ela_quality = st.selectbox("ELA Quality", ["Q70", "Q80", "Q90", "Q95"])
-                        st.image(ela_results[ela_quality], caption=f"ELA at {ela_quality}")
-                        
-                        if show_confidence:
-                            st.info("🔍 Look for bright areas indicating potential editing")
-                        
-                        st.subheader("Enhanced Edge Detection")
-                        edge_results = enhanced_edge_detection(image)
-                        
-                        edge_method = st.selectbox("Edge Detection Method", ["canny", "sobel", "laplacian"])
-                        st.image(edge_results[edge_method], caption=f"{edge_method.capitalize()} Edge Detection")
+                        with st.expander("Enhanced Edge Detection", expanded=False):
+                            st.subheader("Enhanced Edge Detection")
+                            edge_results = enhanced_edge_detection(image)
+                            
+                            edge_method = st.selectbox("Edge Detection Method", ["canny", "sobel", "laplacian"])
+                            st.image(edge_results[edge_method], caption=f"{edge_method.capitalize()} Edge Detection")
                     
                     with col2:
-                        st.subheader("Luminance Analysis")
-                        # Luminance consistency analysis
-                        gray = np.array(image.convert("L"))
+                        with st.expander("Luminance Analysis", expanded=False):
+                            st.subheader("Luminance Analysis")
+                            # Luminance consistency analysis
+                            gray = np.array(image.convert("L"))
+                            
+                            # Create luminance map
+                            luminance_map = cv2.equalizeHist(gray)
+                            st.image(luminance_map, caption="Luminance Map")
+                            
+                            if show_confidence:
+                                st.info("🔍 Inconsistent luminance patterns may indicate manipulation")
                         
-                        # Create luminance map
-                        luminance_map = cv2.equalizeHist(gray)
-                        st.image(luminance_map, caption="Luminance Map")
-                        
-                        if show_confidence:
-                            st.info("🔍 Inconsistent luminance patterns may indicate manipulation")
-                        
-                        st.subheader("Noise Analysis")
-                        # Noise residual analysis
-                        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-                        noise = cv2.absdiff(gray, blur)
-                        st.image(noise, caption="Noise Residual")
-                        
-                        if show_confidence:
-                            st.info("🔍 Uneven noise distribution may indicate tampering")
+                        with st.expander("Noise Analysis", expanded=False):
+                            st.subheader("Noise Analysis")
+                            # Noise residual analysis
+                            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+                            noise = cv2.absdiff(gray, blur)
+                            st.image(noise, caption="Noise Residual")
+                            
+                            if show_confidence:
+                                st.info("🔍 Uneven noise distribution may indicate tampering")
                 
                 with tab2:
                     st.markdown("<div class=\"analysis-header\"><h3>📊 JPEG Compression Analysis</h3></div>", unsafe_allow_html=True)
@@ -2198,65 +2204,68 @@ def main():
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.subheader("Quantization Table Analysis")
-                        try:
-                            exif_dict = piexif.load(img_bytes)
-                            qtable = exif_dict.get("0th", {})
-                            
-                            if qtable:
-                                source, confidence, analysis = classify_quantization_table(qtable)
+                        with st.expander("Quantization Table Analysis", expanded=False):
+                            st.subheader("Quantization Table Analysis")
+                            try:
+                                exif_dict = piexif.load(img_bytes)
+                                qtable = exif_dict.get("0th", {})
                                 
-                                st.success(f"**Estimated Source:** {source}")
-                                st.metric("Confidence Score", f"{confidence:.1f}%")
-                                
-                                with st.expander("Detailed Analysis"):
-                                    st.text(analysis)
+                                if qtable:
+                                    source, confidence, analysis = classify_quantization_table(qtable)
                                     
-                                # Visualize quantization table
-                                if len(qtable) > 0:
-                                    fig, ax = plt.subplots(figsize=(8, 6))
-                                    qtable_values = list(qtable.values())[:64]  # First 64 values
-                                    if len(qtable_values) >= 64:
-                                        qtable_matrix = np.array(qtable_values).reshape(8, 8)
-                                        im = ax.imshow(qtable_matrix, cmap='viridis')
-                                        ax.set_title("Quantization Table Visualization")
-                                        plt.colorbar(im, ax=ax)
-                                        st.pyplot(fig)
-                                    else:
-                                        st.info("Insufficient quantization table data for visualization")
-                            else:
-                                st.warning("No quantization table found in EXIF data")
-                                
-                        except Exception as e:
-                            st.error(f"Error analyzing quantization table: {str(e)}")
+                                    st.success(f"**Estimated Source:** {source}")
+                                    st.metric("Confidence Score", f"{confidence:.1f}%")
+                                    
+                                    with st.expander("Detailed Analysis"):
+                                        st.text(analysis)
+                                        
+                                    # Visualize quantization table
+                                    if len(qtable) > 0:
+                                        fig, ax = plt.subplots(figsize=(8, 6))
+                                        qtable_values = list(qtable.values())[:64]  # First 64 values
+                                        if len(qtable_values) >= 64:
+                                            qtable_matrix = np.array(qtable_values).reshape(8, 8)
+                                            im = ax.imshow(qtable_matrix, cmap='viridis')
+                                            ax.set_title("Quantization Table Visualization")
+                                            plt.colorbar(im, ax=ax)
+                                            st.pyplot(fig)
+                                        else:
+                                            st.info("Insufficient quantization table data for visualization")
+                                else:
+                                    st.warning("No quantization table found in EXIF data")
+                                    
+                            except Exception as e:
+                                st.error(f"Error analyzing quantization table: {str(e)}")
                     
                     with col2:
-                        st.subheader("JPEG Artifact Analysis")
-                        jpeg_analysis = analyze_jpeg_artifacts(image)
-                        
-                        st.image(jpeg_analysis["dct_analysis"], caption="DCT Coefficient Analysis")
-                        st.image(jpeg_analysis["quantization_noise"], caption="Quantization Noise")
-                        
-                        st.metric("Block Variance", f"{jpeg_analysis['block_variance']:.2f}")
-                        
-                        # Compression history estimation
-                        st.subheader("Compression History")
-                        compression_levels = [70, 80, 90, 95]
-                        compression_scores = []
-                        
-                        for level in compression_levels:
-                            buffer = io.BytesIO()
-                            image.save(buffer, 'JPEG', quality=level)
-                            compressed_size = len(buffer.getvalue())
-                            compression_scores.append(compressed_size)
-                        
-                        fig = px.line(
-                            x=compression_levels,
-                            y=compression_scores,
-                            title="Compression Quality vs File Size",
-                            labels={"x": "JPEG Quality", "y": "File Size (bytes)"}
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
+                        with st.expander("JPEG Artifact Analysis", expanded=False):
+                            st.subheader("JPEG Artifact Analysis")
+                            jpeg_analysis = analyze_jpeg_artifacts(image)
+                            
+                            st.image(jpeg_analysis["dct_analysis"], caption="DCT Coefficient Analysis")
+                            st.image(jpeg_analysis["quantization_noise"], caption="Quantization Noise")
+                            
+                            st.metric("Block Variance", f"{jpeg_analysis['block_variance']:.2f}")
+                            
+                            # Compression history estimation
+                        with st.expander("Compression History", expanded=False):
+                            st.subheader("Compression History")
+                            compression_levels = [70, 80, 90, 95]
+                            compression_scores = []
+                            
+                            for level in compression_levels:
+                                buffer = io.BytesIO()
+                                image.save(buffer, 'JPEG', quality=level)
+                                compressed_size = len(buffer.getvalue())
+                                compression_scores.append(compressed_size)
+                            
+                            fig = px.line(
+                                x=compression_levels,
+                                y=compression_scores,
+                                title="Compression Quality vs File Size",
+                                labels={"x": "JPEG Quality", "y": "File Size (bytes)"}
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
                 
                 with tab3:
                     st.markdown("<div class=\"analysis-header\"><h3>📝 Metadata Forensics</h3></div>", unsafe_allow_html=True)
@@ -2266,132 +2275,141 @@ def main():
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.subheader("EXIF Data")
-                        if metadata:
-                            # Clean up metadata display
-                            clean_metadata = {}
-                            for key, value in metadata.items():
-                                if key != "GPS_Info" and not key.startswith("thumbnail"):
-                                    clean_metadata[key] = value
-                            
-                            if clean_metadata:
-                                st.json(clean_metadata)
+                        with st.expander("EXIF Data", expanded=False):
+                            st.subheader("EXIF Data")
+                            if metadata:
+                                # Clean up metadata display
+                                clean_metadata = {}
+                                for key, value in metadata.items():
+                                    if key != "GPS_Info" and not key.startswith("thumbnail"):
+                                        clean_metadata[key] = value
+                                
+                                if clean_metadata:
+                                    st.json(clean_metadata)
+                                else:
+                                    st.info("No EXIF data found")
                             else:
-                                st.info("No EXIF data found")
-                        else:
-                            st.info("No metadata found")
+                                st.info("No metadata found")
                         
                         # Check for GPS data
-                        st.subheader("🌍 Geolocation Data")
-                        if "GPS_Info" in metadata:
-                            st.json(metadata["GPS_Info"])
-                            st.info("GPS coordinates found in image")
-                        else:
-                            st.info("No GPS data found")
+                        with st.expander("Geolocation Data", expanded=False):
+                            st.subheader("🌍 Geolocation Data")
+                            if "GPS_Info" in metadata:
+                                st.json(metadata["GPS_Info"])
+                                st.info("GPS coordinates found in image")
+                            else:
+                                st.info("No GPS data found")
                     
                     with col2:
-                        st.subheader("Thumbnail Analysis")
-                        if "thumbnail_hash" in metadata:
-                            st.success(f"Thumbnail Hash: {metadata['thumbnail_hash']}")
-                            st.metric("Thumbnail Size", f"{metadata['thumbnail_size']} bytes")
-                        else:
-                            st.info("No thumbnail found")
+                        with st.expander("Thumbnail Analysis", expanded=False):
+                            st.subheader("Thumbnail Analysis")
+                            if "thumbnail_hash" in metadata:
+                                st.success(f"Thumbnail Hash: {metadata['thumbnail_hash']}")
+                                st.metric("Thumbnail Size", f"{metadata['thumbnail_size']} bytes")
+                            else:
+                                st.info("No thumbnail found")
                         
                         # Timestamp analysis
-                        st.subheader("📅 Timestamp Analysis")
-                        timestamp_fields = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
-                        timestamps_found = []
-                        
-                        for field in timestamp_fields:
-                            if field in metadata:
-                                timestamps_found.append(f"{field}: {metadata[field]}")
-                        
-                        if timestamps_found:
-                            for ts in timestamps_found:
-                                st.text(ts)
-                        else:
-                            st.info("No timestamps found")
-                        
+                        with st.expander("Timestamp Analysis", expanded=False):
+                            st.subheader("📅 Timestamp Analysis")
+                            timestamp_fields = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
+                            timestamps_found = []
+                            
+                            for field in timestamp_fields:
+                                if field in metadata:
+                                    timestamps_found.append(f"{field}: {metadata[field]}")
+                            
+                            if timestamps_found:
+                                for ts in timestamps_found:
+                                    st.text(ts)
+                            else:
+                                st.info("No timestamps found")
+                            
                         # Software detection
-                        st.subheader("🔧 Software Detection")
-                        software_fields = ['Software', 'ProcessingSoftware', 'HostComputer']
-                        software_found = []
-                        
-                        for field in software_fields:
-                            if field in metadata:
-                                software_found.append(f"{field}: {metadata[field]}")
-                        
-                        if software_found:
-                            for sw in software_found:
-                                st.text(sw)
-                        else:
-                            st.info("No software information found")
-                
+                        with st.expander("Software Detection", expanded=False):
+                            st.subheader("🔧 Software Detection")
+                            software_fields = ['Software', 'ProcessingSoftware', 'HostComputer']
+                            software_found = []
+                            
+                            for field in software_fields:
+                                if field in metadata:
+                                    software_found.append(f"{field}: {metadata[field]}")
+                            
+                            if software_found:
+                                for sw in software_found:
+                                    st.text(sw)
+                            else:
+                                st.info("No software information found")
+                    
                 with tab4:
                     st.markdown("<div class=\"analysis-header\"><h3>🔬 Advanced Forensic Analysis</h3></div>", unsafe_allow_html=True)
                     
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.subheader("PCA Analysis")
-                        # Principal Component Analysis
-                        img_resized = image.resize((128, 128))
-                        img_np = np.array(img_resized)
-                        reshaped = img_np.reshape(-1, 3)
-                        
-                        try:
-                            pca = PCA(n_components=1)
-                            pca_result = pca.fit_transform(reshaped)
-                            pca_image = pca_result.reshape(128, 128)
-                            pca_normalized = np.uint8(255 * (pca_image - pca_image.min()) / (pca_image.max() - pca_image.min()))
+                        with st.expander("PCA Analysis", expanded=False):
+                            st.subheader("PCA Analysis")
+                            # Principal Component Analysis
+                            img_resized = image.resize((128, 128))
+                            img_np = np.array(img_resized)
+                            reshaped = img_np.reshape(-1, 3)
                             
-                            st.image(pca_normalized, caption="PCA Component Analysis")
-                        except Exception as e:
-                            st.error(f"Error in PCA analysis: {str(e)}")
+                            try:
+                                pca = PCA(n_components=1)
+                                pca_result = pca.fit_transform(reshaped)
+                                pca_image = pca_result.reshape(128, 128)
+                                pca_normalized = np.uint8(255 * (pca_image - pca_image.min()) / (pca_image.max() - pca_image.min()))
+                                
+                                st.image(pca_normalized, caption="PCA Component Analysis")
+                            except Exception as e:
+                                st.error(f"Error in PCA analysis: {str(e)}")
                         
-                        st.subheader("Luminance Analysis")
-                        gray = np.array(image.convert('L'))
-                        
-                        # Histogram analysis
-                        hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
-                        
-                        fig, ax = plt.subplots()
-                        ax.plot(hist)
-                        ax.set_title("Luminance Histogram")
-                        ax.set_xlabel("Intensity")
-                        ax.set_ylabel("Frequency")
-                        st.pyplot(fig)
+                        with st.expander("Luminance Analysis", expanded=False):
+                            st.subheader("Luminance Analysis")
+                            gray = np.array(image.convert('L'))
+                            
+                            # Histogram analysis
+                            hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+                            
+                            fig, ax = plt.subplots()
+                            ax.plot(hist)
+                            ax.set_title("Luminance Histogram")
+                            ax.set_xlabel("Intensity")
+                            ax.set_ylabel("Frequency")
+                            st.pyplot(fig)
                     
                     with col2:
-                        st.subheader("Frequency Domain Analysis")
-                        # FFT analysis
-                        gray = np.array(image.convert('L'))
-                        f_transform = np.fft.fft2(gray)
-                        f_shift = np.fft.fftshift(f_transform)
-                        magnitude_spectrum = 20 * np.log(np.abs(f_shift) + 1)
+                        with st.expander("Frequency Domain Analysis", expanded=False):
+                            st.subheader("Frequency Domain Analysis")
+                            # FFT analysis
+                            gray = np.array(image.convert('L'))
+                            f_transform = np.fft.fft2(gray)
+                            f_shift = np.fft.fftshift(f_transform)
+                            magnitude_spectrum = 20 * np.log(np.abs(f_shift) + 1)
+                            
+                            fig, ax = plt.subplots()
+                            ax.imshow(magnitude_spectrum, cmap='gray')
+                            ax.set_title("Frequency Domain Analysis")
+                            ax.axis('off')
+                            st.pyplot(fig)
                         
-                        fig, ax = plt.subplots()
-                        ax.imshow(magnitude_spectrum, cmap='gray')
-                        ax.set_title("Frequency Domain Analysis")
-                        ax.axis('off')
-                        st.pyplot(fig)
-                        
-                        st.subheader("Statistical Analysis")
-                        # Image statistics
-                        hist_normalized = hist / np.sum(hist)
-                        entropy = -np.sum(hist_normalized * np.log2(hist_normalized + 1e-10))
-                        
-                        stats = {
-                            "Mean": np.mean(gray),
-                            "Std Dev": np.std(gray),
-                            "Variance": np.var(gray),
-                            "Min": np.min(gray),
-                            "Max": np.max(gray),
-                            "Entropy": entropy
-                        }
-                        
-                        for stat, value in stats.items():
-                            st.metric(stat, f"{value:.2f}")
+                        with st.expander("Statistical Analysis", expanded=False):
+                            st.subheader("Statistical Analysis")
+                            # Image statistics
+                            hist_normalized = hist / np.sum(hist)
+                            entropy = -np.sum(hist_normalized * np.log2(hist_normalized + 1e-10))
+                            
+                            stats = {
+                                "Mean": np.mean(gray),
+                                "Std Dev": np.std(gray),
+                                "Variance": np.var(gray),
+                                "Min": np.min(gray),
+                                "Max": np.max(gray),
+                                "Entropy": entropy
+                            }
+                            
+                            for stat, value in stats.items():
+                                st.metric(stat, f"{value:.2f}")
                 
                 with tab5:
                     st.markdown("<div class=\"analysis-header\"><h3>📋 Forensic Analysis Report</h3></div>", unsafe_allow_html=True)
@@ -2477,6 +2495,7 @@ def main():
                     - Timestamp Verification
                     - Software Detection
                     """)
+            st.markdown("---")
 
         if __name__ == "__main__":
             main()
