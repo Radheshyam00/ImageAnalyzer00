@@ -31,6 +31,8 @@ from scipy import ndimage
 from scipy.stats import entropy, skew, kurtosis, pearsonr
 from skimage.metrics import structural_similarity as ssim
 from sklearn.cluster import KMeans
+from skimage import metrics, feature, filters
+from scipy import ndimage
 
 load_dotenv()
 
@@ -767,14 +769,12 @@ def main():
      # Navigation menu with icons
     st.sidebar.markdown("### 📋 Navigation")
     page = st.sidebar.selectbox("Choose a Tool", 
-                   ["🔍 Advanced Image Metadata Analyzer", 
-                    # "⚙️ Reverse Image Analyzer", 
-                    "📞 File Inspector Pro", 
-                    "📊 Advanced Image Forensics Analyzer",
-                    "🔧 Settings",
-                    "📱 Aadhaar-Mobile Link Checker"])
+                   ["Advanced Image Metadata Analyzer", 
+                    # "⚙️ Reverse Image Analyzer",  
+                    "Advanced Image Forensics Analyzer",
+                    "File Inspector Pro"])
     
-    if page == "🔍 Advanced Image Metadata Analyzer":
+    if page == "Advanced Image Metadata Analyzer":
             
             # Custom CSS for modern UI
             st.markdown("""
@@ -1031,7 +1031,7 @@ def main():
                     )
     elif page == "⚙️ Reverse Image Analyzer":
         st.title("Product Analysis Tool")
-    elif page == "📞 File Inspector Pro":
+    elif page == "File Inspector Pro":
         # Configure page
         # st.title("File Inspector Pro")
         # st.set_page_config(
@@ -1800,28 +1800,28 @@ def main():
             "</div>", 
             unsafe_allow_html=True
         )
-    elif page == "📊 Advanced Image Forensics Analyzer":
+    elif page == "Advanced Image Forensics Analyzer":
                     
         st.markdown("""
         <style>
             .main > div {
                 padding-top: 2rem;
             }
-            .stTabs [data-baseweb="tab-list"] {
-                gap: 2rem;
-            }
-            .stTabs [data-baseweb="tab"] {
-                height: 50px;
-                white-space: pre-wrap;
-                background-color: #f0f2f6;
-                border-radius: 4px;
-                padding: 10px 20px;
-                font-weight: 500;
-            }
-            .stTabs [aria-selected="true"] {
-                background-color: #ff4b4b;
-                color: white;
-            }
+            # .stTabs [data-baseweb="tab-list"] {
+            #     gap: 2rem;
+            # }
+            # .stTabs [data-baseweb="tab"] {
+            #     height: 50px;
+            #     white-space: pre-wrap;
+            #     background-color: #f0f2f6;
+            #     border-radius: 4px;
+            #     padding: 10px 20px;
+            #     font-weight: 500;
+            # }
+            # .stTabs [aria-selected="true"] {
+            #     background-color: #ff4b4b;
+            #     color: white;
+            # }
             .main-header {
                     background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
                     padding: 2rem;
@@ -1846,10 +1846,10 @@ def main():
             }
         </style>
         """, unsafe_allow_html=True)
-        st.header("⚙️ Analysis Settings")          
+        # st.header("⚙️ Analysis Settings")          
         analysis_mode = st.sidebar.selectbox(
                         "Analysis Mode",
-                        ["Quick Scan", "Deep Analysis", "Expert Mode"],
+                        ["Quick Scan", "Expert Mode"],
                         help="Choose analysis depth"
                     )
         
@@ -2503,19 +2503,1490 @@ def main():
                     ["Tampering Detection Analysis",
                      "JPEG Compression Analysis",
                      "Metadata Forensics",
-                     "Advanced Forensic Analysis"])
+                     "Advanced Forensic Analysis"],
+                     help="Choose Expert Analysis Technique"
+                     )
             
             if page_E == "Tampering Detection Analysis":
                 page1 = st.sidebar.selectbox("Select Analysis Tool", 
                         ["Error Level Analysis (ELA)",
                         "Enhanced Edge Detection",
-                        "Noise Analysis"])
+                        "Noise Analysis"],
+                        help="Choose Analysis Tool"
+                        )
+                
+                if page1 == "Error Level Analysis (ELA)":
+                    st.title("🔍 Advanced Error Level Analysis (ELA) for Image Forensics")
+
+                    st.markdown("""
+                    **Error Level Analysis (ELA)** highlights areas of an image that may have been digitally altered.
+                    It works by comparing the original image to a re-compressed version and analyzing the differences.
+
+                    ### How to interpret ELA results:
+                    - **Bright areas**: Potential signs of manipulation or high compression artifacts
+                    - **Dark areas**: Original, unmodified regions
+                    - **Uniform brightness**: Likely authentic content
+                    - **Sharp brightness differences**: Possible edited boundaries
+
+                    *Best results with JPEG images. PNG/other formats may show uniform patterns.*
+                    """)
+
+                    # Sidebar for advanced options
+                    with st.sidebar:
+                        st.header("🛠️ Analysis Options")
+                        
+                        # File upload
+                        uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png", "bmp", "tiff"])
+                        
+                        if uploaded_file:
+                            st.subheader("ELA Parameters")
+                            quality = st.slider("Compression Quality", min_value=50, max_value=100, value=90, 
+                                            help="Lower values enhance differences")
+                            
+                            enhance_factor = st.slider("Brightness Enhancement", min_value=1, max_value=50, value=20,
+                                                    help="Higher values make differences more visible")
+                            
+                            st.subheader("Additional Analysis")
+                            show_histogram = st.checkbox("Show ELA Histogram", value=True)
+                            show_heatmap = st.checkbox("Show Intensity Heatmap", value=False)
+                            apply_blur = st.checkbox("Apply Gaussian Blur to ELA", value=False)
+                            
+                            if apply_blur:
+                                blur_radius = st.slider("Blur Radius", min_value=0.5, max_value=3.0, value=1.0, step=0.5)
+
+                    def calculate_ela_stats(ela_image):
+                        """Calculate statistics for ELA image"""
+                        # Convert to grayscale for analysis
+                        gray_ela = ela_image.convert('L')
+                        stats = ImageStat.Stat(gray_ela)
+                        
+                        return {
+                            'mean': stats.mean[0],
+                            'median': stats.median[0],
+                            'stddev': stats.stddev[0],
+                            'min': stats.extrema[0][0],
+                            'max': stats.extrema[0][1]
+                        }
+
+                    def create_heatmap(image):
+                        """Create a heatmap visualization of image intensity"""
+                        # Convert to grayscale and then to numpy array
+                        gray_img = image.convert('L')
+                        img_array = np.array(gray_img)
+                        
+                        # Create heatmap
+                        fig, ax = plt.subplots(figsize=(10, 8))
+                        sns.heatmap(img_array, cmap='hot', cbar=True, ax=ax)
+                        ax.set_title('Intensity Heatmap')
+                        ax.set_xlabel('Width (pixels)')
+                        ax.set_ylabel('Height (pixels)')
+                        
+                        return fig
+
+                    def create_histogram(image):
+                        """Create histogram for ELA image"""
+                        # Convert to numpy array for histogram
+                        gray_ela = image.convert('L')
+                        img_array = np.array(gray_ela)
+                        
+                        fig, ax = plt.subplots(figsize=(10, 4))
+                        ax.hist(img_array.flatten(), bins=50, alpha=0.7, color='blue', edgecolor='black')
+                        ax.set_xlabel('Pixel Intensity')
+                        ax.set_ylabel('Frequency')
+                        ax.set_title('ELA Histogram - Distribution of Error Levels')
+                        ax.grid(True, alpha=0.3)
+                        
+                        return fig
+
+                    if uploaded_file:
+                        try:
+                            # Load and display original image
+                            image = Image.open(uploaded_file).convert("RGB")
+                            
+                            col1, col2 = st.columns([2, 1])
+                            
+                            with col1:
+                                st.subheader("🖼️ Original Image")
+                                st.image(image, use_column_width=True)
+                                
+                                # Display image metadata
+                                st.caption(f"Dimensions: {image.size[0]} × {image.size[1]} pixels")
+                                if hasattr(uploaded_file, 'name'):
+                                    st.caption(f"Filename: {uploaded_file.name}")
+
+                            with col2:
+                                st.subheader("📊 Image Info")
+                                st.write(f"**Format**: {image.format if hasattr(image, 'format') else 'Unknown'}")
+                                st.write(f"**Mode**: {image.mode}")
+                                st.write(f"**Size**: {image.size[0]} × {image.size[1]}")
+                                
+                                # File size
+                                if hasattr(uploaded_file, 'size'):
+                                    size_kb = uploaded_file.size / 1024
+                                    st.write(f"**File Size**: {size_kb:.1f} KB")
+
+                            # Perform ELA
+                            st.subheader("🔬 Error Level Analysis")
+                            
+                            with st.spinner("Performing ELA analysis..."):
+                                # Save as JPEG to in-memory buffer with specified quality
+                                buffer = io.BytesIO()
+                                image.save(buffer, format="JPEG", quality=quality)
+                                buffer.seek(0)
+
+                                # Load the recompressed image
+                                recompressed = Image.open(buffer)
+
+                                # Calculate the difference (ELA)
+                                ela_image = ImageChops.difference(image, recompressed)
+
+                                # Apply blur if requested
+                                if apply_blur:
+                                    ela_image = ela_image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+                                # Enhance the brightness
+                                enhancer = ImageEnhance.Brightness(ela_image)
+                                ela_enhanced = enhancer.enhance(enhance_factor)
+
+                            # Display results
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.caption("Original Image")
+                                st.image(image, use_column_width=True)
+                                
+                            with col2:
+                                st.caption(f"ELA Result (Q={quality}, Enhance={enhance_factor})")
+                                st.image(ela_enhanced, use_column_width=True)
+
+                            # ELA Statistics
+                            stats = calculate_ela_stats(ela_enhanced)
+                            
+                            st.subheader("📈 ELA Statistics")
+                            col1, col2, col3, col4, col5 = st.columns(5)
+                            
+                            with col1:
+                                st.metric("Mean Intensity", f"{stats['mean']:.1f}")
+                            with col2:
+                                st.metric("Median", f"{stats['median']:.1f}")
+                            with col3:
+                                st.metric("Std Dev", f"{stats['stddev']:.1f}")
+                            with col4:
+                                st.metric("Min Value", f"{stats['min']}")
+                            with col5:
+                                st.metric("Max Value", f"{stats['max']}")
+
+                            # Additional visualizations
+                            if show_histogram:
+                                st.subheader("📊 ELA Histogram Analysis")
+                                hist_fig = create_histogram(ela_enhanced)
+                                st.pyplot(hist_fig)
+                                plt.close(hist_fig)
+                                
+                                st.markdown("""
+                                **Interpreting the histogram:**
+                                - **Left-skewed distribution**: Most pixels have low error levels (likely authentic)
+                                - **Right-skewed or bimodal**: Possible manipulation or compression artifacts
+                                - **Uniform distribution**: May indicate heavy processing or manipulation
+                                """)
+
+                            if show_heatmap:
+                                st.subheader("🌡️ ELA Intensity Heatmap")
+                                heatmap_fig = create_heatmap(ela_enhanced)
+                                st.pyplot(heatmap_fig)
+                                plt.close(heatmap_fig)
+
+                            # Analysis interpretation
+                            st.subheader("🎯 Analysis Interpretation")
+                            
+                            interpretation_text = ""
+                            
+                            if stats['stddev'] > 15:
+                                interpretation_text += "⚠️ **High variation** in error levels detected. This could indicate digital manipulation or heavy compression artifacts.\n\n"
+                            else:
+                                interpretation_text += "✅ **Low variation** in error levels. This suggests the image may be authentic or uniformly processed.\n\n"
+                                
+                            if stats['mean'] > 20:
+                                interpretation_text += "⚠️ **High average error level** detected. Look for bright regions that might indicate manipulation.\n\n"
+                            else:
+                                interpretation_text += "✅ **Low average error level**. The image shows consistent compression characteristics.\n\n"
+                                
+                            interpretation_text += """
+                            **Remember**: ELA is just one tool in image forensics. Consider these factors:
+                            - Original image quality and compression history
+                            - File format and metadata
+                            - Context and source of the image
+                            - Other forensic techniques (noise analysis, lighting consistency, etc.)
+                            """
+                            
+                            st.markdown(interpretation_text)
+
+                            # Download options
+                            st.subheader("💾 Download Results")
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                # Convert ELA image to bytes for download
+                                ela_buffer = io.BytesIO()
+                                ela_enhanced.save(ela_buffer, format="PNG")
+                                ela_bytes = ela_buffer.getvalue()
+                                
+                                st.download_button(
+                                    label="Download ELA Image",
+                                    data=ela_bytes,
+                                    file_name=f"ela_result_{quality}q_{enhance_factor}e.png",
+                                    mime="image/png"
+                                )
+                                
+                            with col2:
+                                if show_histogram:
+                                    hist_buffer = io.BytesIO()
+                                    hist_fig = create_histogram(ela_enhanced)
+                                    hist_fig.savefig(hist_buffer, format='png', dpi=300, bbox_inches='tight')
+                                    hist_bytes = hist_buffer.getvalue()
+                                    plt.close(hist_fig)
+                                    
+                                    st.download_button(
+                                        label="Download Histogram",
+                                        data=hist_bytes,
+                                        file_name="ela_histogram.png",
+                                        mime="image/png"
+                                    )
+
+                        except Exception as e:
+                            st.error(f"❌ Error processing image: {str(e)}")
+                            st.markdown("**Possible causes:**")
+                            st.markdown("- Unsupported image format")
+                            st.markdown("- Corrupted image file")
+                            st.markdown("- Insufficient memory for large images")
+                            
+                    else:
+                        st.info("👆 Please upload an image file to begin ELA analysis.")
+                        
+                        # Example section
+                        st.subheader("🎓 How ELA Works")
+                        st.markdown("""
+                        1. **Original Image**: The uploaded image in its current state
+                        2. **Recompression**: The image is saved again with specified JPEG quality
+                        3. **Difference Calculation**: Pixel-by-pixel differences are calculated
+                        4. **Enhancement**: Differences are amplified for visibility
+                        5. **Analysis**: Statistical and visual analysis of the results
+                        
+                        **Key Indicators to Look For:**
+                        - Sharp boundaries between bright and dark areas
+                        - Inconsistent error levels across similar textures
+                        - Rectangular or geometric patterns of high error
+                        - Areas that don't match the expected compression behavior
+                        """)
+
+                    # Footer
+                    st.markdown("---")
+                    st.markdown("**Note**: This tool is for educational and research purposes. Professional forensic analysis requires multiple techniques and expert interpretation.")
+
+                elif page1 == "Enhanced Edge Detection":
+                    st.title("🧠 Advanced Enhanced Edge Detection")
+                    st.markdown("Upload an image and apply advanced edge detection techniques using OpenCV.")
+
+                    # Sidebar for controls
+                    st.sidebar.title("⚙️ Edge Detection Parameters")
+
+                    uploaded_file = st.file_uploader("📤 Upload an Image", type=["jpg", "jpeg", "png"])
+
+                    if uploaded_file:
+                        image = Image.open(uploaded_file).convert("RGB")
+                        img_array = np.array(image)
+
+                        st.subheader("🎨 Original Image")
+                        col_orig1, col_orig2 = st.columns([2, 1])
+                        
+                        with col_orig1:
+                            st.image(img_array, channels="RGB", use_column_width=True)
+                        
+                        with col_orig2:
+                            st.markdown("**Image Info:**")
+                            st.write(f"Dimensions: {img_array.shape[1]} x {img_array.shape[0]}")
+                            st.write(f"Channels: {img_array.shape[2]}")
+                            st.write(f"Data type: {img_array.dtype}")
+
+                        # Preprocessing options
+                        st.sidebar.markdown("### 🔧 Preprocessing")
+                        use_gray = st.sidebar.checkbox("Convert to Grayscale", True)
+                        apply_blur = st.sidebar.checkbox("Apply Gaussian Blur", True)
+                        blur_ksize = st.sidebar.slider("Blur Kernel Size", 1, 15, 5, step=2)
+                        
+                        # Additional preprocessing
+                        apply_morphology = st.sidebar.checkbox("Apply Morphological Operations", False)
+                        if apply_morphology:
+                            morph_operation = st.sidebar.selectbox(
+                                "Morphological Operation", 
+                                ["Opening", "Closing", "Gradient", "Tophat", "Blackhat"]
+                            )
+                            morph_kernel_size = st.sidebar.slider("Morphology Kernel Size", 3, 15, 5, step=2)
+
+                        # Canny Edge Detection
+                        st.sidebar.markdown("### 🧱 Canny Edge Detection")
+                        canny_min = st.sidebar.slider("Canny Min Threshold", 0, 255, 50)
+                        canny_max = st.sidebar.slider("Canny Max Threshold", 0, 255, 150)
+                        canny_aperture = st.sidebar.selectbox("Canny Aperture Size", [3, 5, 7], index=0)
+                        canny_l2gradient = st.sidebar.checkbox("Use L2 Gradient", False)
+
+                        # Sobel
+                        st.sidebar.markdown("### 🧭 Sobel Edge Detection")
+                        sobel_ksize = st.sidebar.slider("Sobel Kernel Size", 1, 31, 3, step=2)
+                        sobel_scale = st.sidebar.slider("Sobel Scale", 0.1, 5.0, 1.0, step=0.1)
+                        sobel_delta = st.sidebar.slider("Sobel Delta", 0, 50, 0)
+
+                        # Laplacian
+                        st.sidebar.markdown("### 🌊 Laplacian Edge Detection")
+                        laplacian_ksize = st.sidebar.slider("Laplacian Kernel Size", 1, 31, 3, step=2)
+                        laplacian_scale = st.sidebar.slider("Laplacian Scale", 0.1, 5.0, 1.0, step=0.1)
+
+                        # Scharr
+                        st.sidebar.markdown("### ⚡ Scharr Edge Detection")
+                        scharr_scale = st.sidebar.slider("Scharr Scale", 0.1, 5.0, 1.0, step=0.1)
+                        scharr_delta = st.sidebar.slider("Scharr Delta", 0, 50, 0)
+
+                        # Advanced options
+                        st.sidebar.markdown("### 🎯 Advanced Options")
+                        show_histogram = st.sidebar.checkbox("Show Edge Histogram", False)
+                        combine_edges = st.sidebar.checkbox("Combine All Edges", False)
+                        edge_dilation = st.sidebar.checkbox("Apply Edge Dilation", False)
+                        if edge_dilation:
+                            dilation_kernel = st.sidebar.slider("Dilation Kernel Size", 1, 10, 2)
+
+                        # Process image
+                        processed_img = img_array.copy()
+
+                        if use_gray:
+                            processed_img = cv2.cvtColor(processed_img, cv2.COLOR_RGB2GRAY)
+
+                        if apply_blur:
+                            processed_img = cv2.GaussianBlur(processed_img, (blur_ksize, blur_ksize), 0)
+
+                        # Apply morphological operations
+                        if apply_morphology:
+                            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (morph_kernel_size, morph_kernel_size))
+                            if morph_operation == "Opening":
+                                processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_OPEN, kernel)
+                            elif morph_operation == "Closing":
+                                processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_CLOSE, kernel)
+                            elif morph_operation == "Gradient":
+                                processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_GRADIENT, kernel)
+                            elif morph_operation == "Tophat":
+                                processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_TOPHAT, kernel)
+                            elif morph_operation == "Blackhat":
+                                processed_img = cv2.morphologyEx(processed_img, cv2.MORPH_BLACKHAT, kernel)
+
+                        # Edge detection algorithms
+                        st.subheader("🧪 Edge Detection Results")
+
+                        # Canny
+                        canny = cv2.Canny(processed_img, canny_min, canny_max, 
+                                        apertureSize=canny_aperture, L2gradient=canny_l2gradient)
+
+                        # Sobel
+                        sobelx = cv2.Sobel(processed_img, cv2.CV_64F, 1, 0, 
+                                        ksize=sobel_ksize, scale=sobel_scale, delta=sobel_delta)
+                        sobely = cv2.Sobel(processed_img, cv2.CV_64F, 0, 1, 
+                                        ksize=sobel_ksize, scale=sobel_scale, delta=sobel_delta)
+                        sobel = cv2.magnitude(sobelx, sobely)
+                        sobel = np.uint8(np.clip(sobel, 0, 255))
+
+                        # Laplacian
+                        laplacian = cv2.Laplacian(processed_img, cv2.CV_64F, 
+                                                ksize=laplacian_ksize, scale=laplacian_scale)
+                        laplacian = np.uint8(np.clip(np.absolute(laplacian), 0, 255))
+
+                        # Scharr
+                        scharrx = cv2.Scharr(processed_img, cv2.CV_64F, 1, 0, 
+                                            scale=scharr_scale, delta=scharr_delta)
+                        scharry = cv2.Scharr(processed_img, cv2.CV_64F, 0, 1, 
+                                            scale=scharr_scale, delta=scharr_delta)
+                        scharr = cv2.magnitude(scharrx, scharry)
+                        scharr = np.uint8(np.clip(scharr, 0, 255))
+
+                        # Apply dilation if requested
+                        if edge_dilation:
+                            kernel = np.ones((dilation_kernel, dilation_kernel), np.uint8)
+                            canny = cv2.dilate(canny, kernel, iterations=1)
+                            sobel = cv2.dilate(sobel, kernel, iterations=1)
+                            laplacian = cv2.dilate(laplacian, kernel, iterations=1)
+                            scharr = cv2.dilate(scharr, kernel, iterations=1)
+
+                        # Display results in grid
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("#### 🧱 Canny Edge Detection")
+                            st.image(canny, clamp=True, caption="Canny Edge Detection", use_column_width=True)
+                            
+                            st.markdown("#### 🌊 Laplacian Edge Detection")
+                            st.image(laplacian, clamp=True, caption="Laplacian Edge Detection", use_column_width=True)
+
+                        with col2:
+                            st.markdown("#### 🧭 Sobel Edge Detection")
+                            st.image(sobel, clamp=True, caption="Sobel Edge Detection", use_column_width=True)
+                            
+                            st.markdown("#### ⚡ Scharr Edge Detection")
+                            st.image(scharr, clamp=True, caption="Scharr Edge Detection", use_column_width=True)
+
+                        # Combined edges visualization
+                        if combine_edges:
+                            st.subheader("🎭 Combined Edge Detection")
+                            combined = np.maximum.reduce([canny, sobel, laplacian, scharr])
+                            st.image(combined, clamp=True, caption="Combined All Edge Detection Methods", use_column_width=True)
+
+                        # Edge statistics and histogram
+                        if show_histogram:
+                            st.subheader("📊 Edge Detection Statistics")
+                            
+                            col_stats1, col_stats2 = st.columns(2)
+                            
+                            with col_stats1:
+                                # Statistics
+                                st.markdown("**Edge Pixel Statistics:**")
+                                stats_data = {
+                                    "Method": ["Canny", "Sobel", "Laplacian", "Scharr"],
+                                    "Edge Pixels": [
+                                        np.count_nonzero(canny),
+                                        np.count_nonzero(sobel),
+                                        np.count_nonzero(laplacian),
+                                        np.count_nonzero(scharr)
+                                    ],
+                                    "Edge Percentage": [
+                                        f"{(np.count_nonzero(canny) / canny.size) * 100:.2f}%",
+                                        f"{(np.count_nonzero(sobel) / sobel.size) * 100:.2f}%",
+                                        f"{(np.count_nonzero(laplacian) / laplacian.size) * 100:.2f}%",
+                                        f"{(np.count_nonzero(scharr) / scharr.size) * 100:.2f}%"
+                                    ]
+                                }
+                                st.table(stats_data)
+                            
+                            with col_stats2:
+                                # Histogram
+                                fig, ax = plt.subplots(figsize=(8, 6))
+                                ax.hist(canny.flatten(), bins=50, alpha=0.7, label='Canny', color='red')
+                                ax.hist(sobel.flatten(), bins=50, alpha=0.7, label='Sobel', color='blue')
+                                ax.hist(laplacian.flatten(), bins=50, alpha=0.7, label='Laplacian', color='green')
+                                ax.hist(scharr.flatten(), bins=50, alpha=0.7, label='Scharr', color='orange')
+                                ax.set_xlabel('Pixel Intensity')
+                                ax.set_ylabel('Frequency')
+                                ax.set_title('Edge Detection Intensity Distribution')
+                                ax.legend()
+                                ax.grid(True, alpha=0.3)
+                                st.pyplot(fig)
+
+                        # Download options
+                        st.subheader("💾 Download Results")
+                        col_dl1, col_dl2, col_dl3, col_dl4 = st.columns(4)
+                        
+                        with col_dl1:
+                            canny_pil = Image.fromarray(canny)
+                            buf = io.BytesIO()
+                            canny_pil.save(buf, format='PNG')
+                            st.download_button(
+                                label="Download Canny",
+                                data=buf.getvalue(),
+                                file_name="canny_edges.png",
+                                mime="image/png"
+                            )
+                        
+                        with col_dl2:
+                            sobel_pil = Image.fromarray(sobel)
+                            buf = io.BytesIO()
+                            sobel_pil.save(buf, format='PNG')
+                            st.download_button(
+                                label="Download Sobel",
+                                data=buf.getvalue(),
+                                file_name="sobel_edges.png",
+                                mime="image/png"
+                            )
+                        
+                        with col_dl3:
+                            laplacian_pil = Image.fromarray(laplacian)
+                            buf = io.BytesIO()
+                            laplacian_pil.save(buf, format='PNG')
+                            st.download_button(
+                                label="Download Laplacian",
+                                data=buf.getvalue(),
+                                file_name="laplacian_edges.png",
+                                mime="image/png"
+                            )
+                        
+                        with col_dl4:
+                            scharr_pil = Image.fromarray(scharr)
+                            buf = io.BytesIO()
+                            scharr_pil.save(buf, format='PNG')
+                            st.download_button(
+                                label="Download Scharr",
+                                data=buf.getvalue(),
+                                file_name="scharr_edges.png",
+                                mime="image/png"
+                            )
+
+                    else:
+                        st.info("👆 Please upload an image to get started with edge detection!")
+                        
+                        # Sample information
+                        st.markdown("---")
+                        st.subheader("🎓 About Edge Detection Methods")
+                        
+                        col_info1, col_info2 = st.columns(2)
+                        
+                        with col_info1:
+                            st.markdown("""
+                            **🧱 Canny Edge Detection:**
+                            - Multi-stage algorithm with noise reduction
+                            - Uses double thresholding
+                            - Connects edge pixels to form contours
+                            - Best for clean, well-defined edges
+                            
+                            **🧭 Sobel Edge Detection:**
+                            - Uses convolution with Sobel kernels
+                            - Emphasizes edges in both X and Y directions
+                            - Good for gradient-based edge detection
+                            - Robust to noise
+                            """)
+                        
+                        with col_info2:
+                            st.markdown("""
+                            **🌊 Laplacian Edge Detection:**
+                            - Second-derivative based method
+                            - Sensitive to noise but finds thin edges
+                            - Good for detecting blobs and fine details
+                            - Often combined with Gaussian blur
+                            
+                            **⚡ Scharr Edge Detection:**
+                            - Optimized version of Sobel
+                            - Better rotational symmetry
+                            - More accurate gradient calculation
+                            - Good for precise edge orientation
+                            """)
+
+                elif page1 == "Noise Analysis":
+                    st.title("🧠 Advanced Noise Detection in Images")
+
+                    uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png", "tif", "tiff"])
+
+                    def compute_local_variance(gray_img, kernel_size=3):
+                        """Compute local variance for noise detection"""
+                        mean = cv2.blur(gray_img, (kernel_size, kernel_size))
+                        sq_mean = cv2.blur(np.square(gray_img), (kernel_size, kernel_size))
+                        variance = sq_mean - np.square(mean)
+                        return variance
+
+                    def apply_highpass_filter(img, kernel_size=5):
+                        """Apply high-pass filter to detect high-frequency noise"""
+                        blurred = cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
+                        highpass = cv2.subtract(img, blurred)
+                        return highpass
+
+                    def frequency_noise_map(gray_img):
+                        """Generate frequency domain noise map"""
+                        f = np.fft.fft2(gray_img)
+                        fshift = np.fft.fftshift(f)
+                        magnitude = 20 * np.log(np.abs(fshift) + 1)
+                        return magnitude
+
+                    def laplacian_noise_detection(gray_img):
+                        """Use Laplacian operator for edge-based noise detection"""
+                        laplacian = cv2.Laplacian(gray_img, cv2.CV_64F)
+                        return np.abs(laplacian)
+
+                    def sobel_noise_detection(gray_img):
+                        """Use Sobel operators for gradient-based noise detection"""
+                        sobelx = cv2.Sobel(gray_img, cv2.CV_64F, 1, 0, ksize=3)
+                        sobely = cv2.Sobel(gray_img, cv2.CV_64F, 0, 1, ksize=3)
+                        magnitude = np.sqrt(sobelx**2 + sobely**2)
+                        return magnitude
+
+                    def wiener_filter_estimate(gray_img, noise_var=None):
+                        """Estimate noise using Wiener filter approach"""
+                        if noise_var is None:
+                            # Estimate noise variance from image statistics
+                            noise_var = np.var(gray_img) * 0.1
+                        
+                        # Simple Wiener-like filtering
+                        blurred = cv2.GaussianBlur(gray_img, (5, 5), 0)
+                        noise_estimate = gray_img - blurred
+                        return noise_estimate, noise_var
+
+                    def texture_based_noise_detection(gray_img):
+                        """Detect noise based on texture analysis using local binary patterns"""
+                        # Simplified texture analysis
+                        kernel = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]])
+                        texture_response = cv2.filter2D(gray_img, -1, kernel)
+                        return np.abs(texture_response)
+
+                    def noise_classification(gray_img):
+                        """Classify different types of noise using clustering"""
+                        # Extract features from different noise detection methods
+                        local_var = compute_local_variance(gray_img, 5)
+                        highpass = apply_highpass_filter(gray_img, 9)
+                        laplacian = laplacian_noise_detection(gray_img)
+                        
+                        # Flatten and combine features
+                        h, w = gray_img.shape
+                        features = np.column_stack([
+                            local_var.flatten(),
+                            highpass.flatten(),
+                            laplacian.flatten()
+                        ])
+                        
+                        # Normalize features
+                        features = (features - features.mean(axis=0)) / (features.std(axis=0) + 1e-8)
+                        
+                        # Cluster into noise types
+                        kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+                        noise_types = kmeans.fit_predict(features)
+                        noise_map = noise_types.reshape(h, w)
+                        
+                        return noise_map, kmeans.cluster_centers_
+
+                    def calculate_noise_metrics(gray_img):
+                        """Calculate various noise metrics"""
+                        metrics = {}
+                        
+                        # Signal-to-Noise Ratio (SNR)
+                        signal_power = np.mean(gray_img**2)
+                        noise_estimate = apply_highpass_filter(gray_img, 9)
+                        noise_power = np.mean(noise_estimate**2)
+                        snr = 10 * np.log10(signal_power / (noise_power + 1e-8))
+                        metrics['SNR (dB)'] = snr
+                        
+                        # Peak Signal-to-Noise Ratio (PSNR) estimate
+                        mse_noise = np.mean(noise_estimate**2)
+                        psnr = 20 * np.log10(255.0 / np.sqrt(mse_noise + 1e-8))
+                        metrics['PSNR (dB)'] = psnr
+                        
+                        # Noise variance
+                        metrics['Noise Variance'] = np.var(noise_estimate)
+                        
+                        # Noise standard deviation
+                        metrics['Noise Std Dev'] = np.std(noise_estimate)
+                        
+                        return metrics
+
+                    if uploaded_file:
+                        image = Image.open(uploaded_file).convert('RGB')
+                        img_np = np.array(image)
+                        gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+
+                        col1, col2 = st.columns([2, 1])
+                        
+                        with col1:
+                            st.subheader("📷 Original Image")
+                            st.image(image, use_column_width=True)
+                        
+                        with col2:
+                            st.subheader("📊 Noise Metrics")
+                            metrics = calculate_noise_metrics(gray)
+                            for metric, value in metrics.items():
+                                st.metric(metric, f"{value:.2f}")
+
+                        # Tabs for different analysis methods
+                        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+                            "Local Variance", "High-Pass Filter", "Frequency Domain", 
+                            "Edge Detection", "Wiener Estimate", "Noise Classification"
+                        ])
+
+                        with tab1:
+                            st.subheader("🔍 Local Variance Noise Map")
+                            ksize = st.slider("Kernel size for local variance", 3, 15, 5, step=2, key="var_kernel")
+                            local_var = compute_local_variance(gray, kernel_size=ksize)
+                            local_var_norm = cv2.normalize(local_var, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.image(local_var_norm, caption="Local Variance Heatmap", channels="GRAY", use_column_width=True)
+                            with col2:
+                                fig, ax = plt.subplots()
+                                ax.hist(local_var.flatten(), bins=50, alpha=0.7, color='blue')
+                                ax.set_xlabel('Variance Value')
+                                ax.set_ylabel('Frequency')
+                                ax.set_title('Variance Distribution')
+                                st.pyplot(fig)
+
+                        with tab2:
+                            st.subheader("🧪 High-Pass Filter Noise Detection")
+                            ksize_hp = st.slider("Gaussian Blur kernel size", 3, 25, 9, step=2, key="hp_kernel")
+                            highpass = apply_highpass_filter(gray, kernel_size=ksize_hp)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.image(highpass, caption="High-Pass Filter Result", channels="GRAY", use_column_width=True)
+                            with col2:
+                                fig, ax = plt.subplots()
+                                ax.hist(highpass.flatten(), bins=50, alpha=0.7, color='green')
+                                ax.set_xlabel('Filter Response')
+                                ax.set_ylabel('Frequency')
+                                ax.set_title('High-Pass Response Distribution')
+                                st.pyplot(fig)
+
+                        with tab3:
+                            st.subheader("⚙️ Frequency Domain Noise Detection")
+                            freq_map = frequency_noise_map(gray)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                fig, ax = plt.subplots()
+                                ax.imshow(freq_map, cmap='inferno')
+                                ax.set_title("FFT Magnitude Spectrum")
+                                ax.axis('off')
+                                st.pyplot(fig)
+                            with col2:
+                                # Create radial average of frequency spectrum
+                                center = (freq_map.shape[0]//2, freq_map.shape[1]//2)
+                                y, x = np.ogrid[:freq_map.shape[0], :freq_map.shape[1]]
+                                r = np.sqrt((x - center[1])**2 + (y - center[0])**2)
+                                r = r.astype(int)
+                                
+                                # Calculate radial average
+                                tbin = np.bincount(r.ravel(), freq_map.ravel())
+                                nr = np.bincount(r.ravel())
+                                radial_prof = tbin / (nr + 1e-8)
+                                
+                                fig, ax = plt.subplots()
+                                ax.plot(radial_prof[:len(radial_prof)//2])
+                                ax.set_xlabel('Spatial Frequency')
+                                ax.set_ylabel('Magnitude')
+                                ax.set_title('Radial Frequency Profile')
+                                st.pyplot(fig)
+
+                        with tab4:
+                            st.subheader("🎯 Edge-Based Noise Detection")
+                            method = st.selectbox("Select edge detection method", ["Laplacian", "Sobel"])
+                            
+                            if method == "Laplacian":
+                                edge_response = laplacian_noise_detection(gray)
+                                title = "Laplacian Edge Detection"
+                            else:
+                                edge_response = sobel_noise_detection(gray)
+                                title = "Sobel Gradient Magnitude"
+                            
+                            edge_norm = cv2.normalize(edge_response, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.image(edge_norm, caption=title, channels="GRAY", use_column_width=True)
+                            with col2:
+                                # Texture analysis
+                                texture_response = texture_based_noise_detection(gray)
+                                texture_norm = cv2.normalize(texture_response, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                st.image(texture_norm, caption="Texture-Based Noise Detection", channels="GRAY", use_column_width=True)
+
+                        with tab5:
+                            st.subheader("🔧 Wiener Filter Noise Estimation")
+                            noise_var_input = st.slider("Noise variance (0 = auto-estimate)", 0.0, 1000.0, 0.0)
+                            noise_var = noise_var_input if noise_var_input > 0 else None
+                            
+                            noise_est, estimated_var = wiener_filter_estimate(gray, noise_var)
+                            noise_norm = cv2.normalize(np.abs(noise_est), None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.image(noise_norm, caption="Estimated Noise", channels="GRAY", use_column_width=True)
+                                st.write(f"Estimated noise variance: {estimated_var:.2f}")
+                            with col2:
+                                # Denoised version
+                                denoised = gray - noise_est.astype(np.uint8)
+                                st.image(denoised, caption="Denoised Image", channels="GRAY", use_column_width=True)
+
+                        with tab6:
+                            st.subheader("🎨 Noise Type Classification")
+                            with st.spinner("Classifying noise types..."):
+                                noise_map, cluster_centers = noise_classification(gray)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                fig, ax = plt.subplots()
+                                im = ax.imshow(noise_map, cmap='tab10')
+                                ax.set_title("Noise Type Classification")
+                                ax.axis('off')
+                                plt.colorbar(im, ax=ax)
+                                st.pyplot(fig)
+                            
+                            with col2:
+                                st.write("**Cluster Centers (Feature Space):**")
+                                for i, center in enumerate(cluster_centers):
+                                    st.write(f"Cluster {i}: Local Var={center[0]:.3f}, HighPass={center[1]:.3f}, Laplacian={center[2]:.3f}")
+
+                        # Comparison section
+                        st.subheader("📈 Noise Detection Comparison")
+                        comparison_option = st.selectbox(
+                            "Choose comparison view",
+                            ["Side-by-side", "Overlay", "Difference Map"]
+                        )
+                        
+                        if comparison_option == "Side-by-side":
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                local_var = compute_local_variance(gray, 5)
+                                local_var_norm = cv2.normalize(local_var, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                st.image(local_var_norm, caption="Local Variance", channels="GRAY")
+                            with col2:
+                                highpass = apply_highpass_filter(gray, 9)
+                                st.image(highpass, caption="High-Pass Filter", channels="GRAY")
+                            with col3:
+                                laplacian = laplacian_noise_detection(gray)
+                                laplacian_norm = cv2.normalize(laplacian, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                st.image(laplacian_norm, caption="Laplacian", channels="GRAY")
+
+                        st.success("✅ Advanced noise analysis completed.")
+                    else:
+                        st.info("📤 Upload an image to start advanced noise detection.")
+                        
+                        # Add some help information
+                        with st.expander("ℹ️ About this tool"):
+                            st.markdown("""
+                            This advanced noise detection tool provides multiple methods to analyze and visualize noise in images:
+                            
+                            - **Local Variance**: Identifies noisy regions by computing pixel variance in local neighborhoods
+                            - **High-Pass Filter**: Highlights high-frequency noise by subtracting low-frequency components
+                            - **Frequency Domain**: Analyzes noise patterns in the frequency spectrum using FFT
+                            - **Edge Detection**: Uses Laplacian and Sobel operators to detect noise at edges
+                            - **Wiener Estimation**: Estimates and removes noise using Wiener filter principles
+                            - **Noise Classification**: Automatically classifies different types of noise using machine learning
+                            
+                            **Metrics provided:**
+                            - SNR (Signal-to-Noise Ratio)
+                            - PSNR (Peak Signal-to-Noise Ratio)
+                            - Noise variance and standard deviation
+                            """)
 
             elif page_E == "JPEG Compression Analysis":
                 page1 = st.sidebar.selectbox("Select Analysis Tool", 
                         ["JPEG Artifact Analysis",
                         "Quantization Table Analysis",
-                        "Compression History"])
+                        "Compression History"],
+                        help="Choose Analysis Tool"
+                        )
+                
+                if page1 == "JPEG Artifact Analysis":
+                    # Custom CSS for better styling
+                    st.markdown("""
+                    <style>
+                        .metric-container {
+                            background-color: #f0f2f6;
+                            padding: 1rem;
+                            border-radius: 0.5rem;
+                            margin: 0.5rem 0;
+                        }
+                        .artifact-high { color: #ff4444; font-weight: bold; }
+                        .artifact-medium { color: #ff8800; font-weight: bold; }
+                        .artifact-low { color: #44ff44; font-weight: bold; }
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    st.title("🔬 Advanced JPEG Artifact Analysis Tool")
+                    st.markdown("*Comprehensive analysis of JPEG compression artifacts using multiple detection methods*")
+
+                    uploaded_file = st.file_uploader("📤 Upload a JPEG image", type=['jpg', 'jpeg'])
+
+                    def calculate_psnr(original, compressed):
+                        """Calculate Peak Signal-to-Noise Ratio"""
+                        return metrics.peak_signal_noise_ratio(original, compressed, data_range=255)
+
+                    def calculate_ssim(original, compressed):
+                        """Calculate Structural Similarity Index"""
+                        return metrics.structural_similarity(original, compressed, data_range=255)
+
+                    def dct2(block):
+                        """2D Discrete Cosine Transform"""
+                        return cv2.dct(np.float32(block))
+
+                    def idct2(block):
+                        """2D Inverse Discrete Cosine Transform"""
+                        return cv2.idct(np.float32(block))
+
+                    def visualize_dct(image_gray, block_size=8):
+                        """Visualize DCT coefficients across the image"""
+                        h, w = image_gray.shape
+                        dct_map = np.zeros_like(image_gray, dtype=np.float32)
+                        high_freq_map = np.zeros_like(image_gray, dtype=np.float32)
+                        
+                        for i in range(0, h - block_size + 1, block_size):
+                            for j in range(0, w - block_size + 1, block_size):
+                                block = image_gray[i:i+block_size, j:j+block_size]
+                                dct_block = dct2(block)
+                                
+                                # Overall DCT energy
+                                dct_map[i:i+block_size, j:j+block_size] = np.log(np.abs(dct_block) + 1)
+                                
+                                # High frequency content (bottom-right quadrant)
+                                high_freq = dct_block[block_size//2:, block_size//2:]
+                                high_freq_energy = np.sum(np.abs(high_freq))
+                                high_freq_map[i:i+block_size, j:j+block_size] = high_freq_energy
+                                
+                        return dct_map, high_freq_map
+
+                    def detect_blockiness(image_gray, block_size=8):
+                        """Enhanced blockiness detection with multiple metrics"""
+                        h, w = image_gray.shape
+                        
+                        # Vertical blockiness (at block boundaries)
+                        vertical_diff = 0
+                        for i in range(block_size, h, block_size):
+                            if i < h:
+                                vertical_diff += np.sum(np.abs(image_gray[i-1, :] - image_gray[i, :]))
+                        
+                        # Horizontal blockiness (at block boundaries)
+                        horizontal_diff = 0
+                        for j in range(block_size, w, block_size):
+                            if j < w:
+                                horizontal_diff += np.sum(np.abs(image_gray[:, j-1] - image_gray[:, j]))
+                        
+                        # Normalize by number of boundaries
+                        num_v_boundaries = (h // block_size) * w
+                        num_h_boundaries = h * (w // block_size)
+                        
+                        blockiness_score = (vertical_diff / num_v_boundaries + horizontal_diff / num_h_boundaries) / 2
+                        return blockiness_score
+
+                    def detect_ringing_artifacts(image_gray):
+                        """Detect ringing artifacts using multiple edge detection methods"""
+                        # Laplacian for edge detection
+                        laplacian = cv2.Laplacian(image_gray, cv2.CV_64F)
+                        laplacian_abs = np.abs(laplacian)
+                        
+                        # Sobel edges
+                        sobel_x = cv2.Sobel(image_gray, cv2.CV_64F, 1, 0, ksize=3)
+                        sobel_y = cv2.Sobel(image_gray, cv2.CV_64F, 0, 1, ksize=3)
+                        sobel_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
+                        
+                        # Canny edges
+                        canny = cv2.Canny(image_gray, 50, 150)
+                        
+                        return laplacian_abs, sobel_magnitude, canny
+
+                    def mosquito_noise_detection(image_gray):
+                        """Detect mosquito noise around edges"""
+                        # Find edges
+                        edges = cv2.Canny(image_gray, 50, 150)
+                        
+                        # Dilate edges to create a mask around edge regions
+                        kernel = np.ones((5,5), np.uint8)
+                        edge_regions = cv2.dilate(edges, kernel, iterations=2)
+                        
+                        # Calculate local variance in edge regions
+                        local_var = ndimage.generic_filter(image_gray.astype(np.float32), np.var, size=3)
+                        mosquito_map = local_var * (edge_regions / 255.0)
+                        
+                        return mosquito_map, np.mean(mosquito_map[mosquito_map > 0])
+
+                    def quality_assessment(blockiness, psnr, ssim, mosquito_score):
+                        """Overall quality assessment"""
+                        # Normalize scores (these thresholds may need adjustment based on your use case)
+                        block_norm = min(blockiness / 50.0, 1.0)  # Assuming 50 is high blockiness
+                        psnr_norm = max(0, min((psnr - 20) / 20.0, 1.0))  # 20-40 dB range
+                        ssim_norm = ssim  # Already 0-1
+                        mosquito_norm = min(mosquito_score / 100.0, 1.0)  # Assuming 100 is high
+                        
+                        # Weighted overall quality (higher is better)
+                        quality_score = (
+                            0.3 * (1 - block_norm) +  # Less blockiness is better
+                            0.3 * psnr_norm +         # Higher PSNR is better
+                            0.3 * ssim_norm +         # Higher SSIM is better
+                            0.1 * (1 - mosquito_norm) # Less mosquito noise is better
+                        )
+                        
+                        return quality_score * 100  # Convert to percentage
+
+                    def get_artifact_level(score, thresholds):
+                        """Get artifact level based on score and thresholds"""
+                        if score > thresholds[1]:
+                            return "High", "artifact-high"
+                        elif score > thresholds[0]:
+                            return "Medium", "artifact-medium"
+                        else:
+                            return "Low", "artifact-low"
+
+                    if uploaded_file:
+                        # Load and preprocess image
+                        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+                        img_bgr = cv2.imdecode(file_bytes, 1)
+                        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+                        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+                        
+                        # Display original image
+                        st.image(img_rgb, caption="🖼️ Original Image", use_column_width=True)
+                        
+                        # Control panel
+                        st.sidebar.header("🎛️ Analysis Parameters")
+                        block_size = st.sidebar.slider("DCT Block Size", 4, 16, 8, 2)
+                        show_advanced = st.sidebar.checkbox("Show Advanced Visualizations", True)
+                        
+                        # Basic image info
+                        st.sidebar.markdown("### 📊 Image Information")
+                        st.sidebar.info(f"""
+                        **Dimensions**: {img_rgb.shape[1]} × {img_rgb.shape[0]}
+                        **Channels**: {img_rgb.shape[2]}
+                        **File Size**: {len(file_bytes)} bytes
+                        """)
+                        
+                        st.markdown("---")
+                        
+                        # Analysis
+                        st.header("🔍 Artifact Analysis Results")
+                        
+                        # Create reference image for comparison (slightly blurred)
+                        reference = cv2.GaussianBlur(img_gray, (3, 3), 0.5)
+                        
+                        # Calculate metrics
+                        psnr = calculate_psnr(reference, img_gray)
+                        ssim = calculate_ssim(reference, img_gray)
+                        blockiness_score = detect_blockiness(img_gray, block_size)
+                        mosquito_map, mosquito_score = mosquito_noise_detection(img_gray)
+                        quality_score = quality_assessment(blockiness_score, psnr, ssim, mosquito_score)
+                        
+                        # Display metrics
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            block_level, block_class = get_artifact_level(blockiness_score, [5, 15])
+                            st.markdown(f"""
+                            <div class="metric-container">
+                                <h4>📦 Blockiness</h4>
+                                <p class="{block_class}">{blockiness_score:.2f}</p>
+                                <small>Level: {block_level}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.markdown(f"""
+                            <div class="metric-container">
+                                <h4>📈 PSNR</h4>
+                                <p><strong>{psnr:.2f} dB</strong></p>
+                                <small>Higher is better</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col3:
+                            st.markdown(f"""
+                            <div class="metric-container">
+                                <h4>🎯 SSIM</h4>
+                                <p><strong>{ssim:.3f}</strong></p>
+                                <small>Higher is better</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col4:
+                            mosquito_level, mosquito_class = get_artifact_level(mosquito_score, [20, 50])
+                            st.markdown(f"""
+                            <div class="metric-container">
+                                <h4>🦟 Mosquito Noise</h4>
+                                <p class="{mosquito_class}">{mosquito_score:.2f}</p>
+                                <small>Level: {mosquito_level}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Overall quality score
+                        st.markdown(f"""
+                        <div style="text-align: center; padding: 1rem; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0.5rem; margin: 1rem 0;">
+                            <h3>Overall Image Quality Score: {quality_score:.1f}/100</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Visualizations
+                        if show_advanced:
+                            st.markdown("---")
+                            st.header("🎨 Advanced Visualizations")
+                            
+                            # DCT Analysis
+                            st.subheader("🔍 DCT Coefficient Analysis")
+                            dct_map, high_freq_map = visualize_dct(img_gray, block_size)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                fig1, ax1 = plt.subplots(figsize=(8, 6))
+                                im1 = ax1.imshow(dct_map, cmap='hot', interpolation='nearest')
+                                ax1.set_title("DCT Coefficient Energy Map")
+                                ax1.axis("off")
+                                plt.colorbar(im1, ax=ax1, shrink=0.8)
+                                st.pyplot(fig1)
+                            
+                            with col2:
+                                fig2, ax2 = plt.subplots(figsize=(8, 6))
+                                im2 = ax2.imshow(high_freq_map, cmap='viridis', interpolation='nearest')
+                                ax2.set_title("High Frequency Content Map")
+                                ax2.axis("off")
+                                plt.colorbar(im2, ax=ax2, shrink=0.8)
+                                st.pyplot(fig2)
+                            
+                            # Ringing Artifacts
+                            st.subheader("🌊 Ringing Artifacts Detection")
+                            laplacian_abs, sobel_magnitude, canny = detect_ringing_artifacts(img_gray)
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                fig3, ax3 = plt.subplots(figsize=(6, 6))
+                                ax3.imshow(laplacian_abs, cmap='plasma')
+                                ax3.set_title("Laplacian Edge Detection")
+                                ax3.axis("off")
+                                st.pyplot(fig3)
+                            
+                            with col2:
+                                fig4, ax4 = plt.subplots(figsize=(6, 6))
+                                ax4.imshow(sobel_magnitude, cmap='plasma')
+                                ax4.set_title("Sobel Edge Magnitude")
+                                ax4.axis("off")
+                                st.pyplot(fig4)
+                            
+                            with col3:
+                                fig5, ax5 = plt.subplots(figsize=(6, 6))
+                                ax5.imshow(canny, cmap='gray')
+                                ax5.set_title("Canny Edge Detection")
+                                ax5.axis("off")
+                                st.pyplot(fig5)
+                            
+                            # Mosquito Noise Visualization
+                            st.subheader("🦟 Mosquito Noise Visualization")
+                            fig6, ax6 = plt.subplots(figsize=(10, 6))
+                            im6 = ax6.imshow(mosquito_map, cmap='inferno', interpolation='nearest')
+                            ax6.set_title("Mosquito Noise Around Edges")
+                            ax6.axis("off")
+                            plt.colorbar(im6, ax=ax6, shrink=0.8)
+                            st.pyplot(fig6)
+                        
+                        # Detailed Analysis Report
+                        st.markdown("---")
+                        st.header("📋 Detailed Analysis Report")
+                        
+                        report = f"""
+                        ## JPEG Artifact Analysis Report
+                        
+                        ### Image Specifications
+                        - **Resolution**: {img_rgb.shape[1]} × {img_rgb.shape[0]} pixels
+                        - **File Size**: {len(file_bytes):,} bytes
+                        - **Aspect Ratio**: {img_rgb.shape[1]/img_rgb.shape[0]:.2f}:1
+                        
+                        ### Artifact Detection Results
+                        
+                        #### 1. Blockiness Analysis
+                        - **Score**: {blockiness_score:.2f}
+                        - **Assessment**: {block_level} level blockiness detected
+                        - **Interpretation**: {'Significant 8×8 block boundaries visible' if blockiness_score > 15 else 'Moderate block artifacts present' if blockiness_score > 5 else 'Minimal blockiness detected'}
+                        
+                        #### 2. Signal Quality Metrics
+                        - **PSNR**: {psnr:.2f} dB
+                        - **SSIM**: {ssim:.3f}
+                        - **Quality Rating**: {'Excellent' if psnr > 35 else 'Good' if psnr > 30 else 'Fair' if psnr > 25 else 'Poor'}
+                        
+                        #### 3. Mosquito Noise Assessment
+                        - **Score**: {mosquito_score:.2f}
+                        - **Level**: {mosquito_level}
+                        - **Impact**: {'High-frequency noise visible around edges' if mosquito_score > 50 else 'Moderate noise around sharp edges' if mosquito_score > 20 else 'Minimal mosquito noise detected'}
+                        
+                        ### Overall Quality Assessment
+                        - **Composite Score**: {quality_score:.1f}/100
+                        - **Grade**: {'A' if quality_score > 85 else 'B' if quality_score > 70 else 'C' if quality_score > 55 else 'D'}
+                        
+                        ### Recommendations
+                        """
+                        
+                        if quality_score > 85:
+                            report += "- ✅ Excellent image quality with minimal compression artifacts\n- No action needed"
+                        elif quality_score > 70:
+                            report += "- ✅ Good image quality with acceptable compression\n- Suitable for most applications"
+                        elif quality_score > 55:
+                            report += "- ⚠️ Moderate artifacts present\n- Consider re-encoding with higher quality settings\n- May need preprocessing for critical applications"
+                        else:
+                            report += "- ❌ Significant compression artifacts detected\n- Recommend obtaining higher quality source\n- Consider denoising and artifact reduction techniques"
+                        
+                        st.markdown(report)
+
+                    else:
+                        st.info("📥 Please upload a JPEG image to begin comprehensive artifact analysis.")
+                        st.markdown("""
+                        ### 🔬 What This Tool Analyzes
+                        
+                        - **DCT Coefficient Patterns**: Visualizes frequency domain artifacts
+                        - **Blockiness Detection**: Identifies 8×8 block boundaries from JPEG compression
+                        - **Ringing Artifacts**: Detects oscillations around sharp edges
+                        - **Mosquito Noise**: Identifies high-frequency noise around edges
+                        - **Signal Quality Metrics**: PSNR and SSIM calculations
+                        - **Overall Quality Assessment**: Composite score based on multiple factors
+                        
+                        ### 📊 Supported Formats
+                        - JPEG (.jpg, .jpeg)
+                        """)
+
+                elif page1 == "Quantization Table Analysis":
+                    def extract_quantization_tables(img):
+                        """Extract quantization tables from JPEG image"""
+                        try:
+                            # First try to get quantization tables directly
+                            if hasattr(img, 'quantization') and img.quantization:
+                                return img.quantization
+                            
+                            # Alternative method using PIL's internal structures
+                            if hasattr(img, '_getexif'):
+                                qtables = {}
+                                # Access quantization tables through PIL's internal methods
+                                if hasattr(img, 'app') and 'quantization' in str(img.app):
+                                    return img.quantization
+                            
+                            return {}
+                        except Exception as e:
+                            st.error(f"Error extracting quantization tables: {str(e)}")
+                            return {}
+
+                    def plot_quant_table(table, index, use_seaborn=True):
+                        """Plot quantization table with better visualization"""
+                        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+                        
+                        # Reshape to 8x8 matrix
+                        mat = np.array(table).reshape((8, 8))
+                        
+                        # First plot: Heatmap
+                        if use_seaborn:
+                            sns.heatmap(mat, annot=True, fmt='d', cmap='viridis', 
+                                    ax=ax1, cbar_kws={'label': 'Quantization Value'})
+                        else:
+                            im1 = ax1.imshow(mat, cmap='viridis')
+                            for (i, j), val in np.ndenumerate(mat):
+                                ax1.text(j, i, f'{val}', ha='center', va='center', 
+                                        color='white' if val < mat.max()/2 else 'black', fontsize=8)
+                            plt.colorbar(im1, ax=ax1, label='Quantization Value')
+                        
+                        ax1.set_title(f"Quantization Table {index}")
+                        ax1.set_xlabel("Frequency (Horizontal)")
+                        ax1.set_ylabel("Frequency (Vertical)")
+                        
+                        # Second plot: 3D surface
+                        X, Y = np.meshgrid(range(8), range(8))
+                        ax2 = fig.add_subplot(122, projection='3d')
+                        surf = ax2.plot_surface(X, Y, mat, cmap='viridis', alpha=0.8)
+                        ax2.set_title(f"3D View - Table {index}")
+                        ax2.set_xlabel("Frequency (Horizontal)")
+                        ax2.set_ylabel("Frequency (Vertical)")
+                        ax2.set_zlabel("Quantization Value")
+                        
+                        plt.tight_layout()
+                        st.pyplot(fig)
+
+                    def compare_to_standard(qtable, standard_type='luma'):
+                        """Compare quantization table to standard tables"""
+                        std_luma = np.array([
+                            16,11,10,16,24,40,51,61,
+                            12,12,14,19,26,58,60,55,
+                            14,13,16,24,40,57,69,56,
+                            14,17,22,29,51,87,80,62,
+                            18,22,37,56,68,109,103,77,
+                            24,35,55,64,81,104,113,92,
+                            49,64,78,87,103,121,120,101,
+                            72,92,95,98,112,100,103,99
+                        ]).reshape((8, 8))
+                        
+                        std_chroma = np.array([
+                            17,18,24,47,99,99,99,99,
+                            18,21,26,66,99,99,99,99,
+                            24,26,56,99,99,99,99,99,
+                            47,66,99,99,99,99,99,99,
+                            99,99,99,99,99,99,99,99,
+                            99,99,99,99,99,99,99,99,
+                            99,99,99,99,99,99,99,99,
+                            99,99,99,99,99,99,99,99
+                        ]).reshape((8, 8))
+                        
+                        standard = std_luma if standard_type == 'luma' else std_chroma
+                        qtable_matrix = np.array(qtable).reshape((8, 8))
+                        
+                        # Calculate differences and similarity metrics
+                        diff = qtable_matrix - standard
+                        abs_diff = np.abs(diff)
+                        mse = np.mean(diff**2)
+                        mae = np.mean(abs_diff)
+                        
+                        return {
+                            'difference': diff,
+                            'abs_difference': abs_diff,
+                            'mse': mse,
+                            'mae': mae,
+                            'standard': standard,
+                            'input': qtable_matrix
+                        }
+
+                    def estimate_quality_factor(qtable, table_type='luma'):
+                        """Estimate JPEG quality factor from quantization table"""
+                        std_luma = np.array([
+                            16,11,10,16,24,40,51,61,
+                            12,12,14,19,26,58,60,55,
+                            14,13,16,24,40,57,69,56,
+                            14,17,22,29,51,87,80,62,
+                            18,22,37,56,68,109,103,77,
+                            24,35,55,64,81,104,113,92,
+                            49,64,78,87,103,121,120,101,
+                            72,92,95,98,112,100,103,99
+                        ])
+                        
+                        qtable_flat = np.array(qtable)
+                        
+                        # Simple estimation based on average scaling factor
+                        if np.mean(qtable_flat) != 0:
+                            scale_factor = np.mean(std_luma) / np.mean(qtable_flat)
+                            
+                            if scale_factor >= 1:
+                                quality = 100 - (1/scale_factor - 1) * 50
+                            else:
+                                quality = 50 * scale_factor
+                                
+                            return max(1, min(100, int(quality)))
+                        return 50
+
+                    def analyze_compression_characteristics(qtable):
+                        """Analyze compression characteristics of the quantization table"""
+                        mat = np.array(qtable).reshape((8, 8))
+                        
+                        # High frequency preservation (bottom-right corner)
+                        high_freq_avg = np.mean(mat[4:, 4:])
+                        low_freq_avg = np.mean(mat[:4, :4])
+                        
+                        # Edge preservation
+                        edge_preservation = low_freq_avg / high_freq_avg if high_freq_avg > 0 else float('inf')
+                        
+                        # Uniformity
+                        uniformity = np.std(mat)
+                        
+                        return {
+                            'high_freq_preservation': high_freq_avg,
+                            'low_freq_preservation': low_freq_avg,
+                            'edge_preservation_ratio': edge_preservation,
+                            'uniformity': uniformity,
+                            'max_quantization': np.max(mat),
+                            'min_quantization': np.min(mat)
+                        }
+
+                    # Streamlit UI
+                    # st.set_page_config(page_title="Advanced JPEG Quantization Analyzer", layout="wide")
+                    st.title("🧮 Advanced JPEG Quantization Table Analysis")
+
+                    st.markdown("""
+                    This tool analyzes JPEG quantization tables, which control the compression quality and characteristics.
+                    Upload a JPEG image to examine its quantization tables and compare them with standard tables.
+                    """)
+
+                    # Sidebar for options
+                    st.sidebar.header("Analysis Options")
+                    use_seaborn = st.sidebar.checkbox("Use Seaborn for better plots", value=True)
+                    show_3d = st.sidebar.checkbox("Show 3D visualization", value=True)
+                    compare_standard = st.sidebar.selectbox("Compare with standard:", ["luma", "chroma"])
+
+                    uploaded_file = st.file_uploader("Upload a JPEG image", type=['jpg', 'jpeg'])
+
+                    if uploaded_file:
+                        img = Image.open(uploaded_file)
+
+                        if img.format != 'JPEG':
+                            st.error("⚠️ Only JPEG images contain quantization tables.")
+                        else:
+                            col1, col2 = st.columns([1, 2])
+                            
+                            with col1:
+                                st.image(img, caption="Uploaded Image", use_column_width=True)
+                                
+                                # Image metadata
+                                st.subheader("📋 Image Info")
+                                st.write(f"**Format:** {img.format}")
+                                st.write(f"**Size:** {img.size[0]} × {img.size[1]} pixels")
+                                st.write(f"**Mode:** {img.mode}")
+                                
+                                if hasattr(img, 'info') and 'dpi' in img.info:
+                                    st.write(f"**DPI:** {img.info['dpi']}")
+
+                            with col2:
+                                st.subheader("📊 Quantization Table Analysis")
+                                
+                                qtables = extract_quantization_tables(img)
+
+                                if not qtables:
+                                    st.warning("⚠️ No quantization tables found. This might not be a standard JPEG or the tables are not accessible.")
+                                else:
+                                    # Tabs for different tables
+                                    if len(qtables) > 1:
+                                        tabs = st.tabs([f"Table {idx}" for idx in qtables.keys()])
+                                    else:
+                                        tabs = [st.container()]
+
+                                    for tab_idx, (table_id, table) in enumerate(qtables.items()):
+                                        with tabs[tab_idx]:
+                                            st.markdown(f"### 🔢 Quantization Table {table_id}")
+                                            
+                                            # Estimate quality
+                                            estimated_quality = estimate_quality_factor(table)
+                                            st.metric("Estimated JPEG Quality", f"{estimated_quality}%")
+                                            
+                                            # Show raw values in expandable section
+                                            with st.expander("View Raw Quantization Values"):
+                                                st.dataframe(np.array(table).reshape((8, 8)))
+                                            
+                                            # Plot the table
+                                            plot_quant_table(table, table_id, use_seaborn)
+                                            
+                                            # Compression analysis
+                                            st.subheader("🔍 Compression Characteristics")
+                                            analysis = analyze_compression_characteristics(table)
+                                            
+                                            col_a, col_b, col_c = st.columns(3)
+                                            with col_a:
+                                                st.metric("Low Freq Avg", f"{analysis['low_freq_preservation']:.1f}")
+                                                st.metric("High Freq Avg", f"{analysis['high_freq_preservation']:.1f}")
+                                            with col_b:
+                                                st.metric("Edge Preservation", f"{analysis['edge_preservation_ratio']:.2f}")
+                                                st.metric("Uniformity (std)", f"{analysis['uniformity']:.1f}")
+                                            with col_c:
+                                                st.metric("Min Quantization", f"{analysis['min_quantization']}")
+                                                st.metric("Max Quantization", f"{analysis['max_quantization']}")
+                                            
+                                            # Comparison with standard
+                                            st.subheader(f"📈 Comparison with Standard {compare_standard.title()} Table")
+                                            comparison = compare_to_standard(table, compare_standard)
+                                            
+                                            col_diff1, col_diff2 = st.columns(2)
+                                            
+                                            with col_diff1:
+                                                st.metric("Mean Squared Error", f"{comparison['mse']:.2f}")
+                                                st.metric("Mean Absolute Error", f"{comparison['mae']:.2f}")
+                                            
+                                            with col_diff2:
+                                                # Plot difference heatmap
+                                                fig, ax = plt.subplots(figsize=(8, 6))
+                                                if use_seaborn:
+                                                    sns.heatmap(comparison['difference'], annot=True, fmt='.0f', 
+                                                            cmap='RdBu_r', center=0, ax=ax,
+                                                            cbar_kws={'label': 'Difference from Standard'})
+                                                else:
+                                                    im = ax.imshow(comparison['difference'], cmap='RdBu_r')
+                                                    plt.colorbar(im, ax=ax, label='Difference from Standard')
+                                                    
+                                                ax.set_title(f"Difference from Standard {compare_standard.title()} Table")
+                                                ax.set_xlabel("Frequency (Horizontal)")
+                                                ax.set_ylabel("Frequency (Vertical)")
+                                                st.pyplot(fig)
+
+                    # Educational section
+                    with st.expander("ℹ️ About JPEG Quantization Tables"):
+                        st.markdown("""
+                        **JPEG Quantization Tables** are 8×8 matrices that control compression quality:
+                        
+                        - **Lower values** = Higher quality, less compression
+                        - **Higher values** = Lower quality, more compression
+                        - **Top-left corner** contains low-frequency coefficients (most important)
+                        - **Bottom-right corner** contains high-frequency coefficients (fine details)
+                        
+                        **Standard Tables:**
+                        - **Luminance (Y)**: Used for brightness information
+                        - **Chrominance (Cb, Cr)**: Used for color information
+                        
+                        **Quality Factor Estimation:**
+                        - Quality 100: Minimal compression
+                        - Quality 75-90: High quality
+                        - Quality 50: Balanced
+                        - Quality 10-25: High compression
+                        """)
+
+                elif page1 == "Compression History":
+                    st.title("Compression History")
 
             elif page_E == "Metadata Forensics":
                 page1 = st.sidebar.selectbox("Select Analysis Tool", 
@@ -2523,14 +3994,33 @@ def main():
                          "Geolocation Data",
                         "Thumbnail Analysis",
                         "Timestamp Analysis",
-                        "Software Detection"])
+                        "Software Detection"],
+                        help="Choose Analysis Tool"
+                        )
+                
+                if page1 == "EXIF Data":
+                    st.title("Compression History")
+
+                elif page1 == "Geolocation Data":
+                    st.title("Compression History")
+
+                elif page1 == "Thumbnail Analysis":
+                    st.title("Compression History")
+
+                elif page1 == "Timestamp Analysis":
+                    st.title("Compression History")
+
+                elif page1 == "Software Detection":
+                    st.title("Compression History")
             
             elif page_E == "Advanced Forensic Analysis":
                 page1 = st.sidebar.selectbox("Select Analysis Tool", 
                         ["Advanced Luminous Analyzer Pro",
                         "PCA Analysis",
                         "Frequency Domain Analysis",
-                        "Statistical Analysis"])
+                        "Statistical Analysis"],
+                        help="Choose Analysis Tool"
+                        )
                 
                 if page1 == "Advanced Luminous Analyzer Pro":
                             st.title("🌟 Advanced Luminous Analyzer Pro")
