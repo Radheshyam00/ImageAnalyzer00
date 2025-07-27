@@ -18,13 +18,19 @@ import time
 import piexif
 from bson import ObjectId
 import numpy as np
+import seaborn as sns
 import cv2
-from PIL import Image, ImageChops, ImageEnhance, ImageFilter
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ExifTags
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 from collections import defaultdict
+import matplotlib.patches as patches
+from scipy import ndimage
+from scipy.stats import entropy, skew, kurtosis, pearsonr
+from skimage.metrics import structural_similarity as ssim
+from sklearn.cluster import KMeans
 
 load_dotenv()
 
@@ -1795,16 +1801,7 @@ def main():
             unsafe_allow_html=True
         )
     elif page == "📊 Advanced Image Forensics Analyzer":
-        # st.title("Advanced Image Forensics Analyzer")
-        # Configure page
-        # st.set_page_config(
-        #     page_title="Advanced Image Forensics Analyzer",
-        #     page_icon="🔍",
-        #     layout="wide",
-        #     initial_sidebar_state="expanded"
-        # )
-
-        # Custom CSS for better UI
+                    
         st.markdown("""
         <style>
             .main > div {
@@ -1849,656 +1846,1944 @@ def main():
             }
         </style>
         """, unsafe_allow_html=True)
-
-        # Enhanced quantization table patterns
-        KNOWN_QTABLES = {
-            "JPEG Standard (75%)": {
-                "Q0": [16, 11, 10, 16, 24, 40, 51, 61],
-                "Q1": [17, 18, 24, 47, 99, 99, 99, 99],
-                "signature": "standard_75"
-            },
-            "JPEG Standard (80%)": {
-                "Q0": [6, 4, 4, 6, 10, 16, 20, 24],
-                "Q1": [7, 7, 10, 19, 40, 40, 40, 40],
-                "signature": "standard_80"
-            },
-            "JPEG Standard (90%)": {
-                "Q0": [3, 2, 2, 3, 5, 8, 10, 12],
-                "Q1": [4, 4, 5, 10, 20, 20, 20, 20],
-                "signature": "standard_90"
-            },
-            "WhatsApp": {
-                "Q0": [16, 11, 10, 16, 24, 40, 51, 61],
-                "Q1": [17, 18, 24, 47, 99, 99, 99, 99],
-                "signature": "whatsapp"
-            },
-            "Instagram": {
-                "Q0": [8, 6, 6, 7, 6, 5, 8, 7],
-                "Q1": [9, 9, 9, 12, 10, 12, 24, 16],
-                "signature": "instagram"
-            },
-            "Photoshop Save for Web": {
-                "Q0": [8, 6, 6, 7, 6, 5, 8, 7],
-                "Q1": [9, 9, 9, 12, 10, 12, 24, 16],
-                "signature": "photoshop_web"
-            },
-            "Facebook": {
-                "Q0": [12, 8, 8, 12, 17, 21, 24, 17],
-                "Q1": [13, 13, 17, 21, 35, 35, 35, 35],
-                "signature": "facebook"
-            },
-            "Twitter": {
-                "Q0": [10, 7, 6, 10, 14, 24, 31, 37],
-                "Q1": [11, 11, 14, 28, 58, 58, 58, 58],
-                "signature": "twitter"
-            }
-        }
-
-        # Enhanced classification with multiple algorithms
-        @st.cache_data
-        def classify_quantization_table(qtable_dict):
-            if not qtable_dict:
-                return "Unknown", 0.0, "No quantization table found"
-            
-            try:
-                qtable_vals = list(qtable_dict.values())
-                if len(qtable_vals) < 128:
-                    return "Unknown", 0.0, "Incomplete quantization table"
-                
-                flat_vals = [item for sublist in qtable_vals for item in sublist]
-                q0_table = flat_vals[:64]
-                q1_table = flat_vals[64:128] if len(flat_vals) >= 128 else flat_vals[:64]
-                
-                best_match = "Unknown"
-                best_score = float("inf")
-                confidence_details = []
-                
-                for label, profile in KNOWN_QTABLES.items():
-                    # Compare using multiple metrics
-                    q0_sample = q0_table[:8]
-                    q1_sample = q1_table[:8]
-                    
-                    # Euclidean distance
-                    dist_q0 = np.linalg.norm(np.array(q0_sample) - np.array(profile["Q0"]))
-                    dist_q1 = np.linalg.norm(np.array(q1_sample) - np.array(profile["Q1"]))
-                    
-                    # Cosine similarity
-                    cos_sim_q0 = np.dot(q0_sample, profile["Q0"]) / (np.linalg.norm(q0_sample) * np.linalg.norm(profile["Q0"]))
-                    cos_sim_q1 = np.dot(q1_sample, profile["Q1"]) / (np.linalg.norm(q1_sample) * np.linalg.norm(profile["Q1"]))
-                    
-                    # Combined score
-                    score = (dist_q0 + dist_q1) / (cos_sim_q0 + cos_sim_q1 + 1e-6)
-                    
-                    confidence_details.append({
-                        "source": label,
-                        "score": score,
-                        "euclidean": dist_q0 + dist_q1,
-                        "cosine": (cos_sim_q0 + cos_sim_q1) / 2
-                    })
-                    
-                    if score < best_score:
-                        best_score = score
-                        best_match = label
-                
-                # Calculate confidence
-                confidence = max(0, min(100, 100 - (best_score * 2)))
-                
-                # Generate detailed analysis
-                analysis = f"Best match: {best_match}\n"
-                analysis += f"Confidence: {confidence:.1f}%\n"
-                analysis += f"Score: {best_score:.2f}\n"
-                
-                return best_match, confidence, analysis
-            
-            except Exception as e:
-                return "Error", 0.0, f"Classification error: {str(e)}"
-
-        # Enhanced ELA with adaptive quality
-        @st.cache_data
-        def perform_ela(image, quality=90):
-            """Enhanced Error Level Analysis with adaptive quality selection"""
-            results = {}
-            qualities = [70, 80, 90, 95]
-            
-            for q in qualities:
-                buffer = io.BytesIO()
-                image.save(buffer, 'JPEG', quality=q)
-                buffer.seek(0)
-                compressed = Image.open(buffer)
-                
-                # Calculate difference
-                ela_image = ImageChops.difference(image, compressed)
-                
-                # Enhanced scaling with histogram equalization
-                ela_np = np.array(ela_image)
-                ela_gray = cv2.cvtColor(ela_np, cv2.COLOR_RGB2GRAY)
-                ela_eq = cv2.equalizeHist(ela_gray)
-                ela_colored = cv2.applyColorMap(ela_eq, cv2.COLORMAP_JET)
-                
-                results[f"Q{q}"] = Image.fromarray(cv2.cvtColor(ela_colored, cv2.COLOR_BGR2RGB))
-            
-            return results
-
-        # Enhanced edge detection
-        def enhanced_edge_detection(image):
-            """Multi-scale edge detection for forgery detection"""
-            gray = np.array(image.convert('L'))
-            
-            # Canny edge detection
-            edges_canny = cv2.Canny(gray, 50, 150)
-            
-            # Sobel edge detection
-            sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-            sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-            sobel_combined = np.sqrt(sobelx**2 + sobely**2)
-            sobel_combined = np.uint8(255 * sobel_combined / np.max(sobel_combined))
-            
-            # Laplacian edge detection
-            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-            laplacian = np.uint8(np.absolute(laplacian))
-            
-            return {
-                "canny": Image.fromarray(edges_canny),
-                "sobel": Image.fromarray(sobel_combined),
-                "laplacian": Image.fromarray(laplacian)
+        st.header("⚙️ Analysis Settings")          
+        analysis_mode = st.sidebar.selectbox(
+                        "Analysis Mode",
+                        ["Quick Scan", "Deep Analysis", "Expert Mode"],
+                        help="Choose analysis depth"
+                    )
+        
+        if analysis_mode == "Quick Scan":
+            # Enhanced quantization table patterns
+            KNOWN_QTABLES = {
+                "JPEG Standard (75%)": {
+                    "Q0": [16, 11, 10, 16, 24, 40, 51, 61],
+                    "Q1": [17, 18, 24, 47, 99, 99, 99, 99],
+                    "signature": "standard_75"
+                },
+                "JPEG Standard (80%)": {
+                    "Q0": [6, 4, 4, 6, 10, 16, 20, 24],
+                    "Q1": [7, 7, 10, 19, 40, 40, 40, 40],
+                    "signature": "standard_80"
+                },
+                "JPEG Standard (90%)": {
+                    "Q0": [3, 2, 2, 3, 5, 8, 10, 12],
+                    "Q1": [4, 4, 5, 10, 20, 20, 20, 20],
+                    "signature": "standard_90"
+                },
+                "WhatsApp": {
+                    "Q0": [16, 11, 10, 16, 24, 40, 51, 61],
+                    "Q1": [17, 18, 24, 47, 99, 99, 99, 99],
+                    "signature": "whatsapp"
+                },
+                "Instagram": {
+                    "Q0": [8, 6, 6, 7, 6, 5, 8, 7],
+                    "Q1": [9, 9, 9, 12, 10, 12, 24, 16],
+                    "signature": "instagram"
+                },
+                "Photoshop Save for Web": {
+                    "Q0": [8, 6, 6, 7, 6, 5, 8, 7],
+                    "Q1": [9, 9, 9, 12, 10, 12, 24, 16],
+                    "signature": "photoshop_web"
+                },
+                "Facebook": {
+                    "Q0": [12, 8, 8, 12, 17, 21, 24, 17],
+                    "Q1": [13, 13, 17, 21, 35, 35, 35, 35],
+                    "signature": "facebook"
+                },
+                "Twitter": {
+                    "Q0": [10, 7, 6, 10, 14, 24, 31, 37],
+                    "Q1": [11, 11, 14, 28, 58, 58, 58, 58],
+                    "signature": "twitter"
+                }
             }
 
-        # Enhanced JPEG analysis
-        @st.cache_data
-        def analyze_jpeg_artifacts(image):
-            """Analyze JPEG compression artifacts"""
-            gray = np.array(image.convert("L"))
-            
-            # DCT-based analysis
-            dct_coeffs = cv2.dct(gray.astype(np.float32))
-            
-            # Quantization noise analysis
-            reconstructed = cv2.idct(dct_coeffs)
-            noise = np.abs(gray.astype(np.float32) - reconstructed)
-            
-            # Block artifact detection
-            blocks = []
-            for i in range(0, gray.shape[0], 8):
-                for j in range(0, gray.shape[1], 8):
-                    block = gray[i:i+8, j:j+8]
-                    if block.shape == (8, 8):
-                        blocks.append(np.var(block))
-            
-            block_variance = np.mean(blocks) if blocks else 0
-            
-            return {
-                "dct_analysis": Image.fromarray(np.uint8(255 * np.abs(dct_coeffs) / np.max(np.abs(dct_coeffs)))),
-                "quantization_noise": Image.fromarray(np.uint8(255 * noise / np.max(noise))),
-                "block_variance": block_variance
-            }
+            # Enhanced classification with multiple algorithms
+            @st.cache_data
+            def classify_quantization_table(qtable_dict):
+                if not qtable_dict:
+                    return "Unknown", 0.0, "No quantization table found"
+                
+                try:
+                    qtable_vals = list(qtable_dict.values())
+                    if len(qtable_vals) < 128:
+                        return "Unknown", 0.0, "Incomplete quantization table"
+                    
+                    flat_vals = [item for sublist in qtable_vals for item in sublist]
+                    q0_table = flat_vals[:64]
+                    q1_table = flat_vals[64:128] if len(flat_vals) >= 128 else flat_vals[:64]
+                    
+                    best_match = "Unknown"
+                    best_score = float("inf")
+                    confidence_details = []
+                    
+                    for label, profile in KNOWN_QTABLES.items():
+                        # Compare using multiple metrics
+                        q0_sample = q0_table[:8]
+                        q1_sample = q1_table[:8]
+                        
+                        # Euclidean distance
+                        dist_q0 = np.linalg.norm(np.array(q0_sample) - np.array(profile["Q0"]))
+                        dist_q1 = np.linalg.norm(np.array(q1_sample) - np.array(profile["Q1"]))
+                        
+                        # Cosine similarity
+                        cos_sim_q0 = np.dot(q0_sample, profile["Q0"]) / (np.linalg.norm(q0_sample) * np.linalg.norm(profile["Q0"]))
+                        cos_sim_q1 = np.dot(q1_sample, profile["Q1"]) / (np.linalg.norm(q1_sample) * np.linalg.norm(profile["Q1"]))
+                        
+                        # Combined score
+                        score = (dist_q0 + dist_q1) / (cos_sim_q0 + cos_sim_q1 + 1e-6)
+                        
+                        confidence_details.append({
+                            "source": label,
+                            "score": score,
+                            "euclidean": dist_q0 + dist_q1,
+                            "cosine": (cos_sim_q0 + cos_sim_q1) / 2
+                        })
+                        
+                        if score < best_score:
+                            best_score = score
+                            best_match = label
+                    
+                    # Calculate confidence
+                    confidence = max(0, min(100, 100 - (best_score * 2)))
+                    
+                    # Generate detailed analysis
+                    analysis = f"Best match: {best_match}\n"
+                    analysis += f"Confidence: {confidence:.1f}%\n"
+                    analysis += f"Score: {best_score:.2f}\n"
+                    
+                    return best_match, confidence, analysis
+                
+                except Exception as e:
+                    return "Error", 0.0, f"Classification error: {str(e)}"
 
-        # Enhanced metadata extraction
-        @st.cache_data
-        def extract_comprehensive_metadata(img_bytes):
-            """Extract comprehensive metadata from image"""
-            metadata = {}
-            
-            try:
-                exif_dict = piexif.load(img_bytes)
+            # Enhanced ELA with adaptive quality
+            @st.cache_data
+            def perform_ela(image, quality=90):
+                """Enhanced Error Level Analysis with adaptive quality selection"""
+                results = {}
+                qualities = [70, 80, 90, 95]
                 
-                # Basic EXIF data
-                if "0th" in exif_dict:
-                    for tag, value in exif_dict["0th"].items():
-                        tag_name = piexif.TAGS["0th"].get(tag, {"name": f"Tag_{tag}"})["name"]
-                        metadata[tag_name] = str(value)
+                for q in qualities:
+                    buffer = io.BytesIO()
+                    image.save(buffer, 'JPEG', quality=q)
+                    buffer.seek(0)
+                    compressed = Image.open(buffer)
+                    
+                    # Calculate difference
+                    ela_image = ImageChops.difference(image, compressed)
+                    
+                    # Enhanced scaling with histogram equalization
+                    ela_np = np.array(ela_image)
+                    ela_gray = cv2.cvtColor(ela_np, cv2.COLOR_RGB2GRAY)
+                    ela_eq = cv2.equalizeHist(ela_gray)
+                    ela_colored = cv2.applyColorMap(ela_eq, cv2.COLORMAP_JET)
+                    
+                    results[f"Q{q}"] = Image.fromarray(cv2.cvtColor(ela_colored, cv2.COLOR_BGR2RGB))
                 
-                # GPS data
-                if "GPS" in exif_dict:
-                    gps_data = exif_dict["GPS"]
-                    metadata["GPS_Info"] = {}
-                    for tag, value in gps_data.items():
-                        tag_name = piexif.TAGS["GPS"].get(tag, {"name": f"GPS_{tag}"})["name"]
-                        metadata["GPS_Info"][tag_name] = str(value)
-                
-                # Thumbnail analysis
-                if "thumbnail" in exif_dict and exif_dict["thumbnail"]:
-                    thumb_data = exif_dict["thumbnail"]
-                    thumb_hash = hashlib.md5(thumb_data).hexdigest()
-                    metadata["thumbnail_hash"] = thumb_hash
-                    metadata["thumbnail_size"] = len(thumb_data)
-                
-            except Exception as e:
-                metadata["error"] = str(e)
-            
-            return metadata
+                return results
 
-        # Main application
-        def main():
-
-            st.markdown("""
-            <div class="main-header">
-                <h1>🔍 Advanced Image Metadata & Security Analyzer</h1>
-                <p>Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            # st.title("🔍 Advanced Image Forensics Analyzer")
-            # st.markdown("### Professional-grade image authentication and tampering detection")
-            
-            # Sidebar for settings
-            with st.sidebar:
-                st.header("⚙️ Analysis Settings")
+            # Enhanced edge detection
+            def enhanced_edge_detection(image):
+                """Multi-scale edge detection for forgery detection"""
+                gray = np.array(image.convert('L'))
                 
-                analysis_mode = st.selectbox(
-                    "Analysis Mode",
-                    ["Quick Scan", "Deep Analysis", "Expert Mode"],
-                    help="Choose analysis depth"
+                # Canny edge detection
+                edges_canny = cv2.Canny(gray, 50, 150)
+                
+                # Sobel edge detection
+                sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+                sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+                sobel_combined = np.sqrt(sobelx**2 + sobely**2)
+                sobel_combined = np.uint8(255 * sobel_combined / np.max(sobel_combined))
+                
+                # Laplacian edge detection
+                laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+                laplacian = np.uint8(np.absolute(laplacian))
+                
+                return {
+                    "canny": Image.fromarray(edges_canny),
+                    "sobel": Image.fromarray(sobel_combined),
+                    "laplacian": Image.fromarray(laplacian)
+                }
+
+            # Enhanced JPEG analysis
+            @st.cache_data
+            def analyze_jpeg_artifacts(image):
+                """Analyze JPEG compression artifacts"""
+                gray = np.array(image.convert("L"))
+                
+                # DCT-based analysis
+                dct_coeffs = cv2.dct(gray.astype(np.float32))
+                
+                # Quantization noise analysis
+                reconstructed = cv2.idct(dct_coeffs)
+                noise = np.abs(gray.astype(np.float32) - reconstructed)
+                
+                # Block artifact detection
+                blocks = []
+                for i in range(0, gray.shape[0], 8):
+                    for j in range(0, gray.shape[1], 8):
+                        block = gray[i:i+8, j:j+8]
+                        if block.shape == (8, 8):
+                            blocks.append(np.var(block))
+                
+                block_variance = np.mean(blocks) if blocks else 0
+                
+                return {
+                    "dct_analysis": Image.fromarray(np.uint8(255 * np.abs(dct_coeffs) / np.max(np.abs(dct_coeffs)))),
+                    "quantization_noise": Image.fromarray(np.uint8(255 * noise / np.max(noise))),
+                    "block_variance": block_variance
+                }
+
+            # Enhanced metadata extraction
+            @st.cache_data
+            def extract_comprehensive_metadata(img_bytes):
+                """Extract comprehensive metadata from image"""
+                metadata = {}
+                
+                try:
+                    exif_dict = piexif.load(img_bytes)
+                    
+                    # Basic EXIF data
+                    if "0th" in exif_dict:
+                        for tag, value in exif_dict["0th"].items():
+                            tag_name = piexif.TAGS["0th"].get(tag, {"name": f"Tag_{tag}"})["name"]
+                            metadata[tag_name] = str(value)
+                    
+                    # GPS data
+                    if "GPS" in exif_dict:
+                        gps_data = exif_dict["GPS"]
+                        metadata["GPS_Info"] = {}
+                        for tag, value in gps_data.items():
+                            tag_name = piexif.TAGS["GPS"].get(tag, {"name": f"GPS_{tag}"})["name"]
+                            metadata["GPS_Info"][tag_name] = str(value)
+                    
+                    # Thumbnail analysis
+                    if "thumbnail" in exif_dict and exif_dict["thumbnail"]:
+                        thumb_data = exif_dict["thumbnail"]
+                        thumb_hash = hashlib.md5(thumb_data).hexdigest()
+                        metadata["thumbnail_hash"] = thumb_hash
+                        metadata["thumbnail_size"] = len(thumb_data)
+                    
+                except Exception as e:
+                    metadata["error"] = str(e)
+                
+                return metadata
+
+            # Main application
+            def main():
+
+                st.markdown("""
+                <div class="main-header">
+                    <h1>🔍 Advanced Image Metadata & Security Analyzer</h1>
+                    <p>Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                # st.title("🔍 Advanced Image Forensics Analyzer")
+                # st.markdown("### Professional-grade image authentication and tampering detection")
+                
+                # Sidebar for settings
+                with st.sidebar:
+                    
+                    show_confidence = st.checkbox("Show Confidence Scores", True)
+                    generate_report = st.checkbox("Generate Report", False)
+                    
+                    st.markdown("---")
+                    st.markdown("### 📊 Analysis Coverage")
+                    st.markdown("- Error Level Analysis (ELA)")
+                    st.markdown("- JPEG Artifact Analysis")
+                    st.markdown("- Metadata Forensics")
+                    st.markdown("- Quantization Table Analysis")
+                    st.markdown("- Geometric Analysis")
+                
+                # File upload
+                uploaded_file = st.file_uploader(
+                    "Upload image for forensic analysis",
+                    type=["jpg", "jpeg", "png", "tiff", "bmp"],
+                    help="Supported formats: JPEG, PNG, TIFF, BMP"
                 )
                 
-                show_confidence = st.checkbox("Show Confidence Scores", True)
-                generate_report = st.checkbox("Generate Report", False)
-                
-                st.markdown("---")
-                st.markdown("### 📊 Analysis Coverage")
-                st.markdown("- Error Level Analysis (ELA)")
-                st.markdown("- JPEG Artifact Analysis")
-                st.markdown("- Metadata Forensics")
-                st.markdown("- Quantization Table Analysis")
-                st.markdown("- Geometric Analysis")
-            
-            # File upload
-            uploaded_file = st.file_uploader(
-                "Upload image for forensic analysis",
-                type=["jpg", "jpeg", "png", "tiff", "bmp"],
-                help="Supported formats: JPEG, PNG, TIFF, BMP"
-            )
-            
-            if uploaded_file is not None:
-                # Load and display image
-                image = Image.open(uploaded_file).convert("RGB")
-                uploaded_file.seek(0)
-                img_bytes = uploaded_file.read()
-                st.markdown("---")
-                
-                # Image overview
-                with st.expander("📁 Basic File Info", expanded=False):
-                    col1, col2, col3 = st.columns([1, 1, 1])
-                    with col1:
-                        st.image(image, caption="Original Image")
+                if uploaded_file is not None:
+                    # Load and display image
+                    image = Image.open(uploaded_file).convert("RGB")
+                    uploaded_file.seek(0)
+                    img_bytes = uploaded_file.read()
+                    st.markdown("---")
                     
-                    with col2:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <h4>📏 Image Info</h4>
-                            <p><strong>Size:</strong> {image.size[0]} × {image.size[1]}</p>
-                            <p><strong>Format:</strong> {uploaded_file.type}</p>
-                            <p><strong>File Size:</strong> {len(img_bytes) / 1024:.1f} KB</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col3:
-                        # Quick authenticity score
-                        authenticity_score = np.random.randint(60, 95)  # Placeholder
-                        color = "green" if authenticity_score > 80 else "orange" if authenticity_score > 60 else "red"
+                    # Image overview
+                    with st.expander("📁 Basic File Info", expanded=False):
+                        col1, col2, col3 = st.columns([1, 1, 1])
+                        with col1:
+                            st.image(image, caption="Original Image")
                         
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <h4>🛡️ Authenticity Score</h4>
-                            <h2 style="color: {color};">{authenticity_score}%</h2>
-                            <p>Preliminary assessment</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                st.markdown("---")
-                # Analysis tabs
-                tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                    "🔍 Tampering Detection",
-                    "📊 JPEG Analysis", 
-                    "📝 Metadata Forensics",
-                    "🔬 Advanced Analysis",
-                    "📋 Report"
-                ])
-                
-                with tab1:
-                    st.markdown("<div class=\"analysis-header\"><h3>🔍 Tampering Detection Analysis</h3></div>", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        with st.expander("Error Level Analysis (ELA)", expanded=False):
-                            st.subheader("Error Level Analysis (ELA)")
-                            ela_results = perform_ela(image)
-                            
-                            ela_quality = st.selectbox("ELA Quality", ["Q70", "Q80", "Q90", "Q95"])
-                            st.image(ela_results[ela_quality], caption=f"ELA at {ela_quality}")
-                            
-                            if show_confidence:
-                                st.info("🔍 Look for bright areas indicating potential editing")
+                        with col2:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <h4>📏 Image Info</h4>
+                                <p><strong>Size:</strong> {image.size[0]} × {image.size[1]}</p>
+                                <p><strong>Format:</strong> {uploaded_file.type}</p>
+                                <p><strong>File Size:</strong> {len(img_bytes) / 1024:.1f} KB</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                         
-                        with st.expander("Enhanced Edge Detection", expanded=False):
-                            st.subheader("Enhanced Edge Detection")
-                            edge_results = enhanced_edge_detection(image)
+                        with col3:
+                            # Quick authenticity score
+                            authenticity_score = np.random.randint(60, 95)  # Placeholder
+                            color = "green" if authenticity_score > 80 else "orange" if authenticity_score > 60 else "red"
                             
-                            edge_method = st.selectbox("Edge Detection Method", ["canny", "sobel", "laplacian"])
-                            st.image(edge_results[edge_method], caption=f"{edge_method.capitalize()} Edge Detection")
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <h4>🛡️ Authenticity Score</h4>
+                                <h2 style="color: {color};">{authenticity_score}%</h2>
+                                <p>Preliminary assessment</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    st.markdown("---")
+                    # Analysis tabs
+                    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                        "🔍 Tampering Detection",
+                        "📊 JPEG Analysis", 
+                        "📝 Metadata Forensics",
+                        "🔬 Advanced Analysis",
+                        "📋 Report"
+                    ])
                     
-                    with col2:
-                        with st.expander("Luminance Analysis", expanded=False):
-                            st.subheader("Luminance Analysis")
-                            # Luminance consistency analysis
-                            gray = np.array(image.convert("L"))
-                            
-                            # Create luminance map
-                            luminance_map = cv2.equalizeHist(gray)
-                            st.image(luminance_map, caption="Luminance Map")
-                            
-                            if show_confidence:
-                                st.info("🔍 Inconsistent luminance patterns may indicate manipulation")
+                    with tab1:
+                        st.markdown("<div class=\"analysis-header\"><h3>🔍 Tampering Detection Analysis</h3></div>", unsafe_allow_html=True)
                         
-                        with st.expander("Noise Analysis", expanded=False):
-                            st.subheader("Noise Analysis")
-                            # Noise residual analysis
-                            blur = cv2.GaussianBlur(gray, (5, 5), 0)
-                            noise = cv2.absdiff(gray, blur)
-                            st.image(noise, caption="Noise Residual")
-                            
-                            if show_confidence:
-                                st.info("🔍 Uneven noise distribution may indicate tampering")
-                
-                with tab2:
-                    st.markdown("<div class=\"analysis-header\"><h3>📊 JPEG Compression Analysis</h3></div>", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        with st.expander("Quantization Table Analysis", expanded=False):
-                            st.subheader("Quantization Table Analysis")
-                            try:
-                                exif_dict = piexif.load(img_bytes)
-                                qtable = exif_dict.get("0th", {})
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            with st.expander("Error Level Analysis (ELA)", expanded=False):
+                                st.subheader("Error Level Analysis (ELA)")
+                                ela_results = perform_ela(image)
                                 
-                                if qtable:
-                                    source, confidence, analysis = classify_quantization_table(qtable)
+                                ela_quality = st.selectbox("ELA Quality", ["Q70", "Q80", "Q90", "Q95"])
+                                st.image(ela_results[ela_quality], caption=f"ELA at {ela_quality}")
+                                
+                                if show_confidence:
+                                    st.info("🔍 Look for bright areas indicating potential editing")
+                            
+                            with st.expander("Enhanced Edge Detection", expanded=False):
+                                st.subheader("Enhanced Edge Detection")
+                                edge_results = enhanced_edge_detection(image)
+                                
+                                edge_method = st.selectbox("Edge Detection Method", ["canny", "sobel", "laplacian"])
+                                st.image(edge_results[edge_method], caption=f"{edge_method.capitalize()} Edge Detection")
+                        
+                        with col2:
+                            with st.expander("Luminance Analysis", expanded=False):
+                                st.subheader("Luminance Analysis")
+                                # Luminance consistency analysis
+                                gray = np.array(image.convert("L"))
+                                
+                                # Create luminance map
+                                luminance_map = cv2.equalizeHist(gray)
+                                st.image(luminance_map, caption="Luminance Map")
+                                
+                                if show_confidence:
+                                    st.info("🔍 Inconsistent luminance patterns may indicate manipulation")
+                            
+                            with st.expander("Noise Analysis", expanded=False):
+                                st.subheader("Noise Analysis")
+                                # Noise residual analysis
+                                blur = cv2.GaussianBlur(gray, (5, 5), 0)
+                                noise = cv2.absdiff(gray, blur)
+                                st.image(noise, caption="Noise Residual")
+                                
+                                if show_confidence:
+                                    st.info("🔍 Uneven noise distribution may indicate tampering")
+                    
+                    with tab2:
+                        st.markdown("<div class=\"analysis-header\"><h3>📊 JPEG Compression Analysis</h3></div>", unsafe_allow_html=True)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            with st.expander("Quantization Table Analysis", expanded=False):
+                                st.subheader("Quantization Table Analysis")
+                                try:
+                                    exif_dict = piexif.load(img_bytes)
+                                    qtable = exif_dict.get("0th", {})
                                     
-                                    st.success(f"**Estimated Source:** {source}")
-                                    st.metric("Confidence Score", f"{confidence:.1f}%")
-                                    
-                                    with st.expander("Detailed Analysis"):
-                                        st.text(analysis)
+                                    if qtable:
+                                        source, confidence, analysis = classify_quantization_table(qtable)
                                         
-                                    # Visualize quantization table
-                                    if len(qtable) > 0:
-                                        fig, ax = plt.subplots(figsize=(8, 6))
-                                        qtable_values = list(qtable.values())[:64]  # First 64 values
-                                        if len(qtable_values) >= 64:
-                                            qtable_matrix = np.array(qtable_values).reshape(8, 8)
-                                            im = ax.imshow(qtable_matrix, cmap='viridis')
-                                            ax.set_title("Quantization Table Visualization")
-                                            plt.colorbar(im, ax=ax)
-                                            st.pyplot(fig)
-                                        else:
-                                            st.info("Insufficient quantization table data for visualization")
-                                else:
-                                    st.warning("No quantization table found in EXIF data")
+                                        st.success(f"**Estimated Source:** {source}")
+                                        st.metric("Confidence Score", f"{confidence:.1f}%")
+                                        
+                                        with st.expander("Detailed Analysis"):
+                                            st.text(analysis)
+                                            
+                                        # Visualize quantization table
+                                        if len(qtable) > 0:
+                                            fig, ax = plt.subplots(figsize=(8, 6))
+                                            qtable_values = list(qtable.values())[:64]  # First 64 values
+                                            if len(qtable_values) >= 64:
+                                                qtable_matrix = np.array(qtable_values).reshape(8, 8)
+                                                im = ax.imshow(qtable_matrix, cmap='viridis')
+                                                ax.set_title("Quantization Table Visualization")
+                                                plt.colorbar(im, ax=ax)
+                                                st.pyplot(fig)
+                                            else:
+                                                st.info("Insufficient quantization table data for visualization")
+                                    else:
+                                        st.warning("No quantization table found in EXIF data")
+                                        
+                                except Exception as e:
+                                    st.error(f"Error analyzing quantization table: {str(e)}")
+                        
+                        with col2:
+                            with st.expander("JPEG Artifact Analysis", expanded=False):
+                                st.subheader("JPEG Artifact Analysis")
+                                jpeg_analysis = analyze_jpeg_artifacts(image)
+                                
+                                st.image(jpeg_analysis["dct_analysis"], caption="DCT Coefficient Analysis")
+                                st.image(jpeg_analysis["quantization_noise"], caption="Quantization Noise")
+                                
+                                st.metric("Block Variance", f"{jpeg_analysis['block_variance']:.2f}")
+                                
+                                # Compression history estimation
+                            with st.expander("Compression History", expanded=False):
+                                st.subheader("Compression History")
+                                compression_levels = [70, 80, 90, 95]
+                                compression_scores = []
+                                
+                                for level in compression_levels:
+                                    buffer = io.BytesIO()
+                                    image.save(buffer, 'JPEG', quality=level)
+                                    compressed_size = len(buffer.getvalue())
+                                    compression_scores.append(compressed_size)
+                                
+                                fig = px.line(
+                                    x=compression_levels,
+                                    y=compression_scores,
+                                    title="Compression Quality vs File Size",
+                                    labels={"x": "JPEG Quality", "y": "File Size (bytes)"}
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+                    
+                    with tab3:
+                        st.markdown("<div class=\"analysis-header\"><h3>📝 Metadata Forensics</h3></div>", unsafe_allow_html=True)
+                        
+                        metadata = extract_comprehensive_metadata(img_bytes)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            with st.expander("EXIF Data", expanded=False):
+                                st.subheader("EXIF Data")
+                                if metadata:
+                                    # Clean up metadata display
+                                    clean_metadata = {}
+                                    for key, value in metadata.items():
+                                        if key != "GPS_Info" and not key.startswith("thumbnail"):
+                                            clean_metadata[key] = value
                                     
-                            except Exception as e:
-                                st.error(f"Error analyzing quantization table: {str(e)}")
-                    
-                    with col2:
-                        with st.expander("JPEG Artifact Analysis", expanded=False):
-                            st.subheader("JPEG Artifact Analysis")
-                            jpeg_analysis = analyze_jpeg_artifacts(image)
-                            
-                            st.image(jpeg_analysis["dct_analysis"], caption="DCT Coefficient Analysis")
-                            st.image(jpeg_analysis["quantization_noise"], caption="Quantization Noise")
-                            
-                            st.metric("Block Variance", f"{jpeg_analysis['block_variance']:.2f}")
-                            
-                            # Compression history estimation
-                        with st.expander("Compression History", expanded=False):
-                            st.subheader("Compression History")
-                            compression_levels = [70, 80, 90, 95]
-                            compression_scores = []
-                            
-                            for level in compression_levels:
-                                buffer = io.BytesIO()
-                                image.save(buffer, 'JPEG', quality=level)
-                                compressed_size = len(buffer.getvalue())
-                                compression_scores.append(compressed_size)
-                            
-                            fig = px.line(
-                                x=compression_levels,
-                                y=compression_scores,
-                                title="Compression Quality vs File Size",
-                                labels={"x": "JPEG Quality", "y": "File Size (bytes)"}
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
-                
-                with tab3:
-                    st.markdown("<div class=\"analysis-header\"><h3>📝 Metadata Forensics</h3></div>", unsafe_allow_html=True)
-                    
-                    metadata = extract_comprehensive_metadata(img_bytes)
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        with st.expander("EXIF Data", expanded=False):
-                            st.subheader("EXIF Data")
-                            if metadata:
-                                # Clean up metadata display
-                                clean_metadata = {}
-                                for key, value in metadata.items():
-                                    if key != "GPS_Info" and not key.startswith("thumbnail"):
-                                        clean_metadata[key] = value
-                                
-                                if clean_metadata:
-                                    st.json(clean_metadata)
+                                    if clean_metadata:
+                                        st.json(clean_metadata)
+                                    else:
+                                        st.info("No EXIF data found")
                                 else:
-                                    st.info("No EXIF data found")
-                            else:
-                                st.info("No metadata found")
+                                    st.info("No metadata found")
+                            
+                            # Check for GPS data
+                            with st.expander("Geolocation Data", expanded=False):
+                                st.subheader("🌍 Geolocation Data")
+                                if "GPS_Info" in metadata:
+                                    st.json(metadata["GPS_Info"])
+                                    st.info("GPS coordinates found in image")
+                                else:
+                                    st.info("No GPS data found")
                         
-                        # Check for GPS data
-                        with st.expander("Geolocation Data", expanded=False):
-                            st.subheader("🌍 Geolocation Data")
-                            if "GPS_Info" in metadata:
-                                st.json(metadata["GPS_Info"])
-                                st.info("GPS coordinates found in image")
-                            else:
-                                st.info("No GPS data found")
-                    
-                    with col2:
-                        with st.expander("Thumbnail Analysis", expanded=False):
-                            st.subheader("Thumbnail Analysis")
-                            if "thumbnail_hash" in metadata:
-                                st.success(f"Thumbnail Hash: {metadata['thumbnail_hash']}")
-                                st.metric("Thumbnail Size", f"{metadata['thumbnail_size']} bytes")
-                            else:
-                                st.info("No thumbnail found")
-                        
-                        # Timestamp analysis
-                        with st.expander("Timestamp Analysis", expanded=False):
-                            st.subheader("📅 Timestamp Analysis")
-                            timestamp_fields = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
-                            timestamps_found = []
+                        with col2:
+                            with st.expander("Thumbnail Analysis", expanded=False):
+                                st.subheader("Thumbnail Analysis")
+                                if "thumbnail_hash" in metadata:
+                                    st.success(f"Thumbnail Hash: {metadata['thumbnail_hash']}")
+                                    st.metric("Thumbnail Size", f"{metadata['thumbnail_size']} bytes")
+                                else:
+                                    st.info("No thumbnail found")
                             
-                            for field in timestamp_fields:
-                                if field in metadata:
-                                    timestamps_found.append(f"{field}: {metadata[field]}")
-                            
-                            if timestamps_found:
-                                for ts in timestamps_found:
-                                    st.text(ts)
-                            else:
-                                st.info("No timestamps found")
-                            
-                        # Software detection
-                        with st.expander("Software Detection", expanded=False):
-                            st.subheader("🔧 Software Detection")
-                            software_fields = ['Software', 'ProcessingSoftware', 'HostComputer']
-                            software_found = []
-                            
-                            for field in software_fields:
-                                if field in metadata:
-                                    software_found.append(f"{field}: {metadata[field]}")
-                            
-                            if software_found:
-                                for sw in software_found:
-                                    st.text(sw)
-                            else:
-                                st.info("No software information found")
-                    
-                with tab4:
-                    st.markdown("<div class=\"analysis-header\"><h3>🔬 Advanced Forensic Analysis</h3></div>", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        with st.expander("PCA Analysis", expanded=False):
-                            st.subheader("PCA Analysis")
-                            # Principal Component Analysis
-                            img_resized = image.resize((128, 128))
-                            img_np = np.array(img_resized)
-                            reshaped = img_np.reshape(-1, 3)
-                            
-                            try:
-                                pca = PCA(n_components=1)
-                                pca_result = pca.fit_transform(reshaped)
-                                pca_image = pca_result.reshape(128, 128)
-                                pca_normalized = np.uint8(255 * (pca_image - pca_image.min()) / (pca_image.max() - pca_image.min()))
+                            # Timestamp analysis
+                            with st.expander("Timestamp Analysis", expanded=False):
+                                st.subheader("📅 Timestamp Analysis")
+                                timestamp_fields = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
+                                timestamps_found = []
                                 
-                                st.image(pca_normalized, caption="PCA Component Analysis")
-                            except Exception as e:
-                                st.error(f"Error in PCA analysis: {str(e)}")
+                                for field in timestamp_fields:
+                                    if field in metadata:
+                                        timestamps_found.append(f"{field}: {metadata[field]}")
+                                
+                                if timestamps_found:
+                                    for ts in timestamps_found:
+                                        st.text(ts)
+                                else:
+                                    st.info("No timestamps found")
+                                
+                            # Software detection
+                            with st.expander("Software Detection", expanded=False):
+                                st.subheader("🔧 Software Detection")
+                                software_fields = ['Software', 'ProcessingSoftware', 'HostComputer']
+                                software_found = []
+                                
+                                for field in software_fields:
+                                    if field in metadata:
+                                        software_found.append(f"{field}: {metadata[field]}")
+                                
+                                if software_found:
+                                    for sw in software_found:
+                                        st.text(sw)
+                                else:
+                                    st.info("No software information found")
                         
-                        with st.expander("Luminance Analysis", expanded=False):
-                            st.subheader("Luminance Analysis")
-                            gray = np.array(image.convert('L'))
+                    with tab4:
+                        st.markdown("<div class=\"analysis-header\"><h3>🔬 Advanced Forensic Analysis</h3></div>", unsafe_allow_html=True)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            with st.expander("PCA Analysis", expanded=False):
+                                st.subheader("PCA Analysis")
+                                # Principal Component Analysis
+                                img_resized = image.resize((128, 128))
+                                img_np = np.array(img_resized)
+                                reshaped = img_np.reshape(-1, 3)
+                                
+                                try:
+                                    pca = PCA(n_components=1)
+                                    pca_result = pca.fit_transform(reshaped)
+                                    pca_image = pca_result.reshape(128, 128)
+                                    pca_normalized = np.uint8(255 * (pca_image - pca_image.min()) / (pca_image.max() - pca_image.min()))
+                                    
+                                    st.image(pca_normalized, caption="PCA Component Analysis")
+                                except Exception as e:
+                                    st.error(f"Error in PCA analysis: {str(e)}")
                             
-                            # Histogram analysis
-                            hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+                            with st.expander("Luminance Analysis", expanded=False):
+                                st.subheader("Luminance Analysis")
+                                gray = np.array(image.convert('L'))
+                                
+                                # Histogram analysis
+                                hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+                                
+                                fig, ax = plt.subplots()
+                                ax.plot(hist)
+                                ax.set_title("Luminance Histogram")
+                                ax.set_xlabel("Intensity")
+                                ax.set_ylabel("Frequency")
+                                st.pyplot(fig)
+                        
+                        with col2:
+                            with st.expander("Frequency Domain Analysis", expanded=False):
+                                st.subheader("Frequency Domain Analysis")
+                                # FFT analysis
+                                gray = np.array(image.convert('L'))
+                                f_transform = np.fft.fft2(gray)
+                                f_shift = np.fft.fftshift(f_transform)
+                                magnitude_spectrum = 20 * np.log(np.abs(f_shift) + 1)
+                                
+                                fig, ax = plt.subplots()
+                                ax.imshow(magnitude_spectrum, cmap='gray')
+                                ax.set_title("Frequency Domain Analysis")
+                                ax.axis('off')
+                                st.pyplot(fig)
                             
-                            fig, ax = plt.subplots()
-                            ax.plot(hist)
-                            ax.set_title("Luminance Histogram")
-                            ax.set_xlabel("Intensity")
-                            ax.set_ylabel("Frequency")
-                            st.pyplot(fig)
+                            with st.expander("Statistical Analysis", expanded=False):
+                                st.subheader("Statistical Analysis")
+                                # Image statistics
+                                hist_normalized = hist / np.sum(hist)
+                                entropy = -np.sum(hist_normalized * np.log2(hist_normalized + 1e-10))
+                                
+                                stats = {
+                                    "Mean": np.mean(gray),
+                                    "Std Dev": np.std(gray),
+                                    "Variance": np.var(gray),
+                                    "Min": np.min(gray),
+                                    "Max": np.max(gray),
+                                    "Entropy": entropy
+                                }
+                                
+                                for stat, value in stats.items():
+                                    st.metric(stat, f"{value:.2f}")
                     
-                    with col2:
-                        with st.expander("Frequency Domain Analysis", expanded=False):
-                            st.subheader("Frequency Domain Analysis")
-                            # FFT analysis
-                            gray = np.array(image.convert('L'))
-                            f_transform = np.fft.fft2(gray)
-                            f_shift = np.fft.fftshift(f_transform)
-                            magnitude_spectrum = 20 * np.log(np.abs(f_shift) + 1)
-                            
-                            fig, ax = plt.subplots()
-                            ax.imshow(magnitude_spectrum, cmap='gray')
-                            ax.set_title("Frequency Domain Analysis")
-                            ax.axis('off')
-                            st.pyplot(fig)
+                    with tab5:
+                        st.markdown("<div class=\"analysis-header\"><h3>📋 Forensic Analysis Report</h3></div>", unsafe_allow_html=True)
                         
-                        with st.expander("Statistical Analysis", expanded=False):
-                            st.subheader("Statistical Analysis")
-                            # Image statistics
-                            hist_normalized = hist / np.sum(hist)
-                            entropy = -np.sum(hist_normalized * np.log2(hist_normalized + 1e-10))
-                            
-                            stats = {
-                                "Mean": np.mean(gray),
-                                "Std Dev": np.std(gray),
-                                "Variance": np.var(gray),
-                                "Min": np.min(gray),
-                                "Max": np.max(gray),
-                                "Entropy": entropy
+                        if generate_report:
+                            report_data = {
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "image_info": {
+                                    "filename": uploaded_file.name,
+                                    "size": f"{image.size[0]}x{image.size[1]}",
+                                    "format": uploaded_file.type,
+                                    "file_size": f"{len(img_bytes) / 1024:.1f} KB"
+                                },
+                                "authenticity_score": authenticity_score,
+                                "analysis_mode": analysis_mode,
+                                "findings": []
                             }
                             
-                            for stat, value in stats.items():
-                                st.metric(stat, f"{value:.2f}")
-                
-                with tab5:
-                    st.markdown("<div class=\"analysis-header\"><h3>📋 Forensic Analysis Report</h3></div>", unsafe_allow_html=True)
-                    
-                    if generate_report:
-                        report_data = {
-                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "image_info": {
-                                "filename": uploaded_file.name,
-                                "size": f"{image.size[0]}x{image.size[1]}",
-                                "format": uploaded_file.type,
-                                "file_size": f"{len(img_bytes) / 1024:.1f} KB"
-                            },
-                            "authenticity_score": authenticity_score,
-                            "analysis_mode": analysis_mode,
-                            "findings": []
-                        }
-                        
-                        # Add findings based on analysis
-                        if authenticity_score > 80:
-                            report_data["findings"].append("Image shows high authenticity indicators")
-                        elif authenticity_score > 60:
-                            report_data["findings"].append("Image shows moderate authenticity indicators")
+                            # Add findings based on analysis
+                            if authenticity_score > 80:
+                                report_data["findings"].append("Image shows high authenticity indicators")
+                            elif authenticity_score > 60:
+                                report_data["findings"].append("Image shows moderate authenticity indicators")
+                            else:
+                                report_data["findings"].append("Image shows low authenticity indicators - further investigation recommended")
+                            
+                            # Display report
+                            st.subheader("Executive Summary")
+                            st.write(f"**Analysis Date:** {report_data['timestamp']}")
+                            st.write(f"**Image:** {report_data['image_info']['filename']}")
+                            st.write(f"**Authenticity Score:** {report_data['authenticity_score']}")
+                            
+                            st.subheader("Key Findings")
+                            for finding in report_data["findings"]:
+                                st.write(f"• {finding}")
+                            
+                            st.subheader("Technical Details")
+                            st.json(report_data)
+                            
+                            # Download report
+                            if st.button("Download Report"):
+                                report_json = str(report_data)
+                                st.download_button(
+                                    label="Download JSON Report",
+                                    data=report_json,
+                                    file_name=f"forensic_report_{uploaded_file.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                                    mime="application/json"
+                                )
                         else:
-                            report_data["findings"].append("Image shows low authenticity indicators - further investigation recommended")
-                        
-                        # Display report
-                        st.subheader("Executive Summary")
-                        st.write(f"**Analysis Date:** {report_data['timestamp']}")
-                        st.write(f"**Image:** {report_data['image_info']['filename']}")
-                        st.write(f"**Authenticity Score:** {report_data['authenticity_score']}")
-                        
-                        st.subheader("Key Findings")
-                        for finding in report_data["findings"]:
-                            st.write(f"• {finding}")
-                        
-                        st.subheader("Technical Details")
-                        st.json(report_data)
-                        
-                        # Download report
-                        if st.button("Download Report"):
-                            report_json = str(report_data)
-                            st.download_button(
-                                label="Download JSON Report",
-                                data=report_json,
-                                file_name=f"forensic_report_{uploaded_file.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                                mime="application/json"
-                            )
-                    else:
-                        st.info("Enable 'Generate Report' in the sidebar to create a detailed analysis report.")
-            
-            else:
-                st.info("👆 Upload an image to begin forensic analysis")
+                            st.info("Enable 'Generate Report' in the sidebar to create a detailed analysis report.")
                 
-                # Show example analysis
-                st.markdown("### 🎯 What This Tool Analyzes")
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.markdown("""
-                    **🔍 Tampering Detection**
-                    - Error Level Analysis (ELA)
-                    - Splicing Detection
-                    - Luminance Analysis
-                    - Noise Pattern Analysis
-                    """)
-                
-                with col2:
-                    st.markdown("""
-                    **📊 JPEG Analysis**
-                    - Quantization Tables
-                    - Compression History
-                    - Artifact Detection
-                    - Quality Assessment
-                    """)
-                
-                with col3:
-                    st.markdown("""
-                    **📝 Metadata Forensics**
-                    - EXIF Data Analysis
-                    - GPS Coordinates
-                    - Timestamp Verification
-                    - Software Detection
-                    """)
-            st.markdown("---")
+                else:
+                    st.info("👆 Upload an image to begin forensic analysis")
+                    
+                    # Show example analysis
+                    st.markdown("### 🎯 What This Tool Analyzes")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.markdown("""
+                        **🔍 Tampering Detection**
+                        - Error Level Analysis (ELA)
+                        - Splicing Detection
+                        - Luminance Analysis
+                        - Noise Pattern Analysis
+                        """)
+                    
+                    with col2:
+                        st.markdown("""
+                        **📊 JPEG Analysis**
+                        - Quantization Tables
+                        - Compression History
+                        - Artifact Detection
+                        - Quality Assessment
+                        """)
+                    
+                    with col3:
+                        st.markdown("""
+                        **📝 Metadata Forensics**
+                        - EXIF Data Analysis
+                        - GPS Coordinates
+                        - Timestamp Verification
+                        - Software Detection
+                        """)
+                st.markdown("---")
 
-        if __name__ == "__main__":
-            main()
-         
+            if __name__ == "__main__":
+                main()
+
+        elif analysis_mode == "Expert Mode":
+
+            page_E = st.sidebar.selectbox("Expert Mode", 
+                    ["Tampering Detection Analysis",
+                     "JPEG Compression Analysis",
+                     "Metadata Forensics",
+                     "Advanced Forensic Analysis"])
+            
+            if page_E == "Tampering Detection Analysis":
+                page1 = st.sidebar.selectbox("Select Analysis Tool", 
+                        ["Error Level Analysis (ELA)",
+                        "Enhanced Edge Detection",
+                        "Noise Analysis"])
+
+            elif page_E == "JPEG Compression Analysis":
+                page1 = st.sidebar.selectbox("Select Analysis Tool", 
+                        ["JPEG Artifact Analysis",
+                        "Quantization Table Analysis",
+                        "Compression History"])
+
+            elif page_E == "Metadata Forensics":
+                page1 = st.sidebar.selectbox("Select Analysis Tool", 
+                        ["EXIF Data",
+                         "Geolocation Data",
+                        "Thumbnail Analysis",
+                        "Timestamp Analysis",
+                        "Software Detection"])
+            
+            elif page_E == "Advanced Forensic Analysis":
+                page1 = st.sidebar.selectbox("Select Analysis Tool", 
+                        ["Advanced Luminous Analyzer Pro",
+                        "PCA Analysis",
+                        "Frequency Domain Analysis",
+                        "Statistical Analysis"])
+                
+                if page1 == "Advanced Luminous Analyzer Pro":
+                            st.title("🌟 Advanced Luminous Analyzer Pro")
+                            st.write("Upload an image to analyze its luminance (brightness) distribution with comprehensive statistical analysis.")
+
+                            # Sidebar for settings
+                            st.sidebar.header("⚙️ Analysis Settings")
+
+                            # Color space selection
+                            color_space = st.sidebar.selectbox(
+                                "Luminance Calculation Method",
+                                ["ITU-R BT.601 (Standard)", "ITU-R BT.709 (HDTV)", "Simple Average", "Custom Weights"]
+                            )
+
+                            # Image resize option
+                            max_size = st.sidebar.slider("Max Image Size (for performance)", 500, 2000, 1000, 50)
+                            st.sidebar.write("Large images will be resized for faster processing")
+
+                            # Custom weights if selected
+                            if color_space == "Custom Weights":
+                                st.sidebar.subheader("Custom RGB Weights")
+                                r_weight = st.sidebar.slider("Red Weight", 0.0, 1.0, 0.299, 0.001)
+                                g_weight = st.sidebar.slider("Green Weight", 0.0, 1.0, 0.587, 0.001) 
+                                b_weight = st.sidebar.slider("Blue Weight", 0.0, 1.0, 0.114, 0.001)
+                                
+                                # Normalize weights
+                                total_weight = r_weight + g_weight + b_weight
+                                if total_weight > 0:
+                                    r_weight, g_weight, b_weight = r_weight/total_weight, g_weight/total_weight, b_weight/total_weight
+
+                            uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png", "bmp", "webp", "tiff"])
+
+                            def calculate_luminance(img_array, method):
+                                """Calculate luminance based on selected method"""
+                                try:
+                                    if method == "ITU-R BT.601 (Standard)":
+                                        return 0.299 * img_array[:, :, 0] + 0.587 * img_array[:, :, 1] + 0.114 * img_array[:, :, 2]
+                                    elif method == "ITU-R BT.709 (HDTV)":
+                                        return 0.2126 * img_array[:, :, 0] + 0.7152 * img_array[:, :, 1] + 0.0722 * img_array[:, :, 2]
+                                    elif method == "Simple Average":
+                                        return np.mean(img_array, axis=2)
+                                    elif method == "Custom Weights":
+                                        return r_weight * img_array[:, :, 0] + g_weight * img_array[:, :, 1] + b_weight * img_array[:, :, 2]
+                                except Exception as e:
+                                    st.error(f"Error calculating luminance: {str(e)}")
+                                    return None
+
+                            def resize_image_if_needed(image, max_size):
+                                """Resize image if it's too large"""
+                                width, height = image.size
+                                if max(width, height) > max_size:
+                                    ratio = max_size / max(width, height)
+                                    new_width = int(width * ratio)
+                                    new_height = int(height * ratio)
+                                    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                                return image
+
+                            if uploaded_file:
+                                try:
+                                    # Load and process image
+                                    with st.spinner("Loading and processing image..."):
+                                        image = Image.open(uploaded_file).convert("RGB")
+                                        original_size = image.size
+                                        
+                                        # Resize if needed
+                                        image = resize_image_if_needed(image, max_size)
+                                        resized_size = image.size
+                                        
+                                        if original_size != resized_size:
+                                            st.info(f"Image resized from {original_size} to {resized_size} for faster processing")
+                                        
+                                        st.image(image, caption="Processed Image", use_column_width=True)
+                                        
+                                        img_np = np.array(image)
+                                        
+                                        # Calculate luminance
+                                        luminance = calculate_luminance(img_np, color_space)
+                                        
+                                        if luminance is None:
+                                            st.error("Failed to calculate luminance. Please try a different image.")
+                                            st.stop()
+                                        
+                                    # Basic Statistics
+                                    avg_lum = np.mean(luminance)
+                                    min_lum = np.min(luminance)
+                                    max_lum = np.max(luminance)
+                                    std_lum = np.std(luminance)
+                                    median_lum = np.median(luminance)
+                                    
+                                    # Percentiles
+                                    p25 = np.percentile(luminance, 25)
+                                    p75 = np.percentile(luminance, 75)
+                                    
+                                    st.markdown("### 📊 Comprehensive Luminance Statistics")
+                                    
+                                    # Display metrics in columns
+                                    col1, col2, col3, col4 = st.columns(4)
+                                    col1.metric("Average", f"{avg_lum:.2f}")
+                                    col2.metric("Median", f"{median_lum:.2f}")
+                                    col3.metric("Std Deviation", f"{std_lum:.2f}")
+                                    col4.metric("Range", f"{max_lum - min_lum:.2f}")
+                                    
+                                    col5, col6, col7, col8 = st.columns(4)
+                                    col5.metric("Minimum", f"{min_lum:.2f}")
+                                    col6.metric("Maximum", f"{max_lum:.2f}")
+                                    col7.metric("25th Percentile", f"{p25:.2f}")
+                                    col8.metric("75th Percentile", f"{p75:.2f}")
+                                    
+                                    # Create tabs for different visualizations
+                                    tab1, tab2, tab3, tab4 = st.tabs(["🔥 Heatmap", "📈 Histogram", "🎯 Threshold Analysis", "📋 Data Export"])
+                                    
+                                    with tab1:
+                                        st.markdown("### Luminance Heatmap")
+                                        fig1, ax1 = plt.subplots(figsize=(12, 8))
+                                        heatmap = ax1.imshow(luminance, cmap="inferno", interpolation="nearest")
+                                        plt.colorbar(heatmap, ax=ax1, label='Luminance Value')
+                                        ax1.set_title(f"Luminance Heatmap ({color_space})")
+                                        ax1.axis("off")
+                                        st.pyplot(fig1)
+                                        
+                                        # Download heatmap
+                                        buf1 = io.BytesIO()
+                                        fig1.savefig(buf1, format="png", dpi=300, bbox_inches='tight')
+                                        buf1.seek(0)
+                                        st.download_button("📥 Download Heatmap (High Quality)", buf1, 
+                                                        file_name="luminance_heatmap.png", mime="image/png")
+                                    
+                                    with tab2:
+                                        st.markdown("### Luminance Distribution")
+                                        fig2, (ax2, ax3) = plt.subplots(1, 2, figsize=(15, 6))
+                                        
+                                        # Histogram
+                                        ax2.hist(luminance.flatten(), bins=50, alpha=0.7, color='skyblue', edgecolor='black')
+                                        ax2.axvline(avg_lum, color='red', linestyle='--', label=f'Mean: {avg_lum:.2f}')
+                                        ax2.axvline(median_lum, color='green', linestyle='--', label=f'Median: {median_lum:.2f}')
+                                        ax2.set_xlabel('Luminance Value')
+                                        ax2.set_ylabel('Frequency')
+                                        ax2.set_title('Luminance Distribution')
+                                        ax2.legend()
+                                        ax2.grid(True, alpha=0.3)
+                                        
+                                        # Box plot
+                                        ax3.boxplot(luminance.flatten(), vert=True)
+                                        ax3.set_ylabel('Luminance Value')
+                                        ax3.set_title('Luminance Box Plot')
+                                        ax3.grid(True, alpha=0.3)
+                                        
+                                        st.pyplot(fig2)
+                                        
+                                        # Download histogram
+                                        buf2 = io.BytesIO()
+                                        fig2.savefig(buf2, format="png", dpi=300, bbox_inches='tight')
+                                        buf2.seek(0)
+                                        st.download_button("📥 Download Distribution Plot", buf2, 
+                                                        file_name="luminance_distribution.png", mime="image/png")
+                                    
+                                    with tab3:
+                                        st.markdown("### Interactive Threshold Analysis")
+                                        
+                                        col_a, col_b = st.columns([1, 2])
+                                        
+                                        with col_a:
+                                            threshold_low = st.slider("Lower Threshold", 0.0, 255.0, 50.0, 1.0)
+                                            threshold_high = st.slider("Upper Threshold", 0.0, 255.0, 200.0, 1.0)
+                                            
+                                            # Ensure proper ordering
+                                            if threshold_low >= threshold_high:
+                                                st.error("Lower threshold must be less than upper threshold!")
+                                            else:
+                                                # Calculate regions
+                                                dark_mask = luminance < threshold_low
+                                                bright_mask = luminance > threshold_high
+                                                mid_mask = (luminance >= threshold_low) & (luminance <= threshold_high)
+                                                
+                                                # Statistics for each region
+                                                dark_percent = np.sum(dark_mask) / luminance.size * 100
+                                                bright_percent = np.sum(bright_mask) / luminance.size * 100
+                                                mid_percent = np.sum(mid_mask) / luminance.size * 100
+                                                
+                                                st.metric("Dark Regions %", f"{dark_percent:.1f}%")
+                                                st.metric("Mid-tone Regions %", f"{mid_percent:.1f}%")
+                                                st.metric("Bright Regions %", f"{bright_percent:.1f}%")
+                                        
+                                        with col_b:
+                                            if threshold_low < threshold_high:
+                                                # Create colored overlay
+                                                overlay = np.zeros((*luminance.shape, 3), dtype=np.uint8)
+                                                overlay[dark_mask] = [0, 0, 255]      # Blue for dark
+                                                overlay[mid_mask] = [0, 255, 0]       # Green for mid-tone
+                                                overlay[bright_mask] = [255, 0, 0]    # Red for bright
+                                                
+                                                st.image(overlay, caption="Threshold Analysis: Blue=Dark, Green=Mid-tone, Red=Bright", 
+                                                    use_column_width=True)
+                                    
+                                    with tab4:
+                                        st.markdown("### Data Export Options")
+                                        
+                                        # Prepare statistics DataFrame
+                                        stats_data = {
+                                            'Metric': ['Mean', 'Median', 'Standard Deviation', 'Minimum', 'Maximum', 
+                                                    '25th Percentile', '75th Percentile', 'Range'],
+                                            'Value': [avg_lum, median_lum, std_lum, min_lum, max_lum, p25, p75, max_lum - min_lum]
+                                        }
+                                        stats_df = pd.DataFrame(stats_data)
+                                        
+                                        st.subheader("📈 Statistics Summary")
+                                        st.dataframe(stats_df, use_container_width=True)
+                                        
+                                        # Export options
+                                        col_export1, col_export2, col_export3 = st.columns(3)
+                                        
+                                        with col_export1:
+                                            # Export statistics as CSV
+                                            stats_csv = stats_df.to_csv(index=False)
+                                            st.download_button("📊 Download Statistics CSV", stats_csv, 
+                                                            file_name="luminance_statistics.csv", mime="text/csv")
+                                        
+                                        with col_export2:
+                                            # Export raw luminance data (sampled for large images)
+                                            sample_size = min(10000, luminance.size)
+                                            sampled_luminance = np.random.choice(luminance.flatten(), sample_size, replace=False)
+                                            luminance_df = pd.DataFrame({'Luminance': sampled_luminance})
+                                            luminance_csv = luminance_df.to_csv(index=False)
+                                            st.download_button("🔢 Download Sample Data CSV", luminance_csv, 
+                                                            file_name="luminance_data_sample.csv", mime="text/csv")
+                                        
+                                        with col_export3:
+                                            # Export analysis report
+                                            report = f"""Luminance Analysis Report
+                            Image: {uploaded_file.name}
+                            Analysis Method: {color_space}
+                            Original Size: {original_size[0]} x {original_size[1]} pixels
+                            Processed Size: {resized_size[0]} x {resized_size[1]} pixels
+
+                            Statistical Summary:
+                            - Mean Luminance: {avg_lum:.2f}
+                            - Median Luminance: {median_lum:.2f}
+                            - Standard Deviation: {std_lum:.2f}
+                            - Range: {min_lum:.2f} - {max_lum:.2f}
+                            - 25th Percentile: {p25:.2f}
+                            - 75th Percentile: {p75:.2f}
+                            - Coefficient of Variation: {(std_lum/avg_lum)*100:.2f}%
+
+                            Generated by Advanced Luminous Analyzer Pro
+                            """
+                                            st.download_button("📝 Download Analysis Report", report, 
+                                                            file_name="luminance_analysis_report.txt", mime="text/plain")
+                                        
+                                        # Additional analysis insights
+                                        st.subheader("🔍 Analysis Insights")
+                                        
+                                        cv = (std_lum / avg_lum) * 100 if avg_lum > 0 else 0
+                                        
+                                        insights = []
+                                        if cv < 20:
+                                            insights.append("📊 Low variability - Image has relatively uniform brightness")
+                                        elif cv > 50:
+                                            insights.append("📊 High variability - Image has significant brightness contrast")
+                                        else:
+                                            insights.append("📊 Moderate variability - Image has balanced brightness distribution")
+                                        
+                                        if avg_lum < 85:
+                                            insights.append("🌙 Overall dark image - Consider brightness adjustment")
+                                        elif avg_lum > 170:
+                                            insights.append("☀️ Overall bright image - Well-lit or high exposure")
+                                        else:
+                                            insights.append("⚖️ Well-balanced brightness levels")
+                                        
+                                        if abs(avg_lum - median_lum) > 10:
+                                            insights.append("⚠️ Skewed distribution - Mean and median differ significantly")
+                                        else:
+                                            insights.append("✅ Normal distribution - Mean and median are similar")
+                                        
+                                        for insight in insights:
+                                            st.write(insight)
+                                            
+                                except Exception as e:
+                                    st.error(f"An error occurred while processing the image: {str(e)}")
+                                    st.write("Please ensure you've uploaded a valid image file and try again.")
+
+                            else:
+                                st.info("👆 Please upload an image to begin analysis")
+                                
+                                # Show sample features
+                                st.markdown("### ✨ Features")
+                                feature_col1, feature_col2 = st.columns(2)
+                                
+                                with feature_col1:
+                                    st.markdown("""
+                                    **Analysis Options:**
+                                    - Multiple luminance calculation methods
+                                    - Automatic image resizing for performance
+                                    - Comprehensive statistical analysis
+                                    - Interactive threshold analysis
+                                    """)
+                                
+                                with feature_col2:
+                                    st.markdown("""
+                                    **Export Capabilities:**
+                                    - High-quality visualization downloads
+                                    - Statistical data in CSV format
+                                    - Detailed analysis reports
+                                    - Sample data for further analysis
+                                    """)
+            
+                elif page1 == "PCA Analysis":
+                    # Custom CSS for better styling
+                    st.markdown("""
+                    <style>
+                        .main-header {
+                            font-size: 2.5rem;
+                            font-weight: bold;
+                            color: #1f77b4;
+                            text-align: center;
+                            margin-bottom: 1rem;
+                        }
+                        .metric-container {
+                            background-color: #f0f2f6;
+                            padding: 1rem;
+                            border-radius: 0.5rem;
+                            margin: 0.5rem 0;
+                        }
+                        .stProgress .st-bo {
+                            background-color: #1f77b4;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown('<h1 class="main-header">📷 Advanced PCA Image Analyzer</h1>', unsafe_allow_html=True)
+                    st.markdown("Analyze image compression and transformation using **Principal Component Analysis (PCA)** with advanced metrics and visualizations.")
+
+                    # File uploader
+                    uploaded_file = st.file_uploader(
+                        "Upload an image", 
+                        type=["png", "jpg", "jpeg", "bmp", "tiff"],
+                        help="Supported formats: PNG, JPG, JPEG, BMP, TIFF"
+                    )
+
+                    def apply_pca_on_channel(channel_data, n_components):
+                        """Apply PCA to a single color channel."""
+                        pca = PCA(n_components=n_components)
+                        transformed = pca.fit_transform(channel_data)
+                        reconstructed = pca.inverse_transform(transformed)
+                        return reconstructed, pca.explained_variance_ratio_, pca.singular_values_
+
+                    def calculate_compression_metrics(original, reconstructed, n_components, max_components):
+                        """Calculate various compression and quality metrics."""
+                        # Mean Squared Error
+                        mse = np.mean((original - reconstructed) ** 2)
+                        
+                        # Peak Signal-to-Noise Ratio
+                        if mse == 0:
+                            psnr = float('inf')
+                        else:
+                            max_pixel = 255.0
+                            psnr = 20 * np.log10(max_pixel / np.sqrt(mse))
+                        
+                        # Compression ratio
+                        compression_ratio = max_components / n_components
+                        
+                        # Data retention percentage
+                        data_retention = (n_components / max_components) * 100
+                        
+                        return {
+                            'mse': mse,
+                            'psnr': psnr,
+                            'compression_ratio': compression_ratio,
+                            'data_retention': data_retention
+                        }
+
+                    def plot_cumulative_variance(variance_ratios, channel_names, colors):
+                        """Plot cumulative explained variance for all channels."""
+                        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+                        
+                        # Individual variance plot
+                        for i, (var_ratio, name, color) in enumerate(zip(variance_ratios, channel_names, colors)):
+                            ax1.plot(range(1, len(var_ratio) + 1), var_ratio, 
+                                    label=f'{name} Channel', color=color, linewidth=2)
+                        
+                        ax1.set_xlabel('Principal Components')
+                        ax1.set_ylabel('Explained Variance Ratio')
+                        ax1.set_title('Explained Variance by Component')
+                        ax1.legend()
+                        ax1.grid(True, alpha=0.3)
+                        
+                        # Cumulative variance plot
+                        for i, (var_ratio, name, color) in enumerate(zip(variance_ratios, channel_names, colors)):
+                            cumulative_var = np.cumsum(var_ratio)
+                            ax2.plot(range(1, len(cumulative_var) + 1), cumulative_var, 
+                                    label=f'{name} Channel', color=color, linewidth=2)
+                        
+                        ax2.set_xlabel('Principal Components')
+                        ax2.set_ylabel('Cumulative Explained Variance')
+                        ax2.set_title('Cumulative Explained Variance')
+                        ax2.legend()
+                        ax2.grid(True, alpha=0.3)
+                        ax2.axhline(y=0.9, color='red', linestyle='--', alpha=0.7, label='90% Threshold')
+                        ax2.axhline(y=0.95, color='orange', linestyle='--', alpha=0.7, label='95% Threshold')
+                        
+                        plt.tight_layout()
+                        return fig
+
+                    def create_comparison_grid(original, reconstructed, n_components):
+                        """Create a comparison grid showing original vs reconstructed image."""
+                        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+                        
+                        # Original image
+                        axes[0, 0].imshow(original)
+                        axes[0, 0].set_title('Original Image', fontsize=14, fontweight='bold')
+                        axes[0, 0].axis('off')
+                        
+                        # Reconstructed image
+                        axes[0, 1].imshow(reconstructed)
+                        axes[0, 1].set_title(f'PCA Reconstructed ({n_components} components)', fontsize=14, fontweight='bold')
+                        axes[0, 1].axis('off')
+                        
+                        # Difference image
+                        diff = np.abs(original.astype(float) - reconstructed.astype(float))
+                        axes[1, 0].imshow(diff / 255.0, cmap='hot')
+                        axes[1, 0].set_title('Absolute Difference', fontsize=14, fontweight='bold')
+                        axes[1, 0].axis('off')
+                        
+                        # Histogram comparison
+                        axes[1, 1].hist(original.flatten(), bins=50, alpha=0.7, label='Original', color='blue')
+                        axes[1, 1].hist(reconstructed.flatten(), bins=50, alpha=0.7, label='Reconstructed', color='red')
+                        axes[1, 1].set_title('Pixel Intensity Distribution', fontsize=14, fontweight='bold')
+                        axes[1, 1].set_xlabel('Pixel Intensity')
+                        axes[1, 1].set_ylabel('Frequency')
+                        axes[1, 1].legend()
+                        axes[1, 1].grid(True, alpha=0.3)
+                        
+                        plt.tight_layout()
+                        return fig
+
+                    if uploaded_file:
+                        # Load and process image
+                        with st.spinner('Loading image...'):
+                            image = Image.open(uploaded_file).convert("RGB")
+                            image_np = np.array(image)
+                        
+                        # Display original image info
+                        st.subheader("📊 Image Information")
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Width", f"{image_np.shape[1]} px")
+                        with col2:
+                            st.metric("Height", f"{image_np.shape[0]} px")
+                        with col3:
+                            st.metric("Channels", image_np.shape[2])
+                        with col4:
+                            st.metric("Total Pixels", f"{image_np.shape[0] * image_np.shape[1]:,}")
+                        
+                        max_components = min(image_np.shape[0], image_np.shape[1])
+                        
+                        # Sidebar controls
+                        st.sidebar.header("🔧 PCA Configuration")
+                        
+                        # Component selection methods
+                        selection_method = st.sidebar.radio(
+                            "Component Selection Method:",
+                            ["Manual", "Variance Threshold", "Compression Ratio"]
+                        )
+                        
+                        if selection_method == "Manual":
+                            n_components = st.sidebar.slider(
+                                "Number of PCA Components", 
+                                1, max_components, 
+                                value=min(50, int(max_components * 0.2)),
+                                help="Select the number of principal components to retain"
+                            )
+                        elif selection_method == "Variance Threshold":
+                            variance_threshold = st.sidebar.slider(
+                                "Variance Threshold (%)", 
+                                50, 99, 
+                                value=90,
+                                help="Retain components that explain this percentage of variance"
+                            ) / 100
+                            n_components = max_components  # Will be calculated after PCA
+                        else:  # Compression Ratio
+                            compression_ratio = st.sidebar.slider(
+                                "Compression Ratio", 
+                                2, 50, 
+                                value=10,
+                                help="Higher ratio = more compression"
+                            )
+                            n_components = max(1, max_components // compression_ratio)
+                        
+                        # Analysis options
+                        st.sidebar.header("📈 Analysis Options")
+                        show_variance_plot = st.sidebar.checkbox("Show Variance Analysis", value=True)
+                        show_comparison_grid = st.sidebar.checkbox("Show Detailed Comparison", value=True)
+                        show_metrics = st.sidebar.checkbox("Show Quality Metrics", value=True)
+                        
+                        # Processing
+                        if st.sidebar.button("🚀 Run PCA Analysis", type="primary"):
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            # Separate channels
+                            status_text.text('Separating color channels...')
+                            progress_bar.progress(20)
+                            R, G, B = image_np[:,:,0], image_np[:,:,1], image_np[:,:,2]
+                            
+                            # Apply PCA to each channel
+                            status_text.text('Applying PCA to Red channel...')
+                            progress_bar.progress(40)
+                            R_reconstructed, R_var, R_singular = apply_pca_on_channel(R, n_components)
+                            
+                            status_text.text('Applying PCA to Green channel...')
+                            progress_bar.progress(60)
+                            G_reconstructed, G_var, G_singular = apply_pca_on_channel(G, n_components)
+                            
+                            status_text.text('Applying PCA to Blue channel...')
+                            progress_bar.progress(80)
+                            B_reconstructed, B_var, B_singular = apply_pca_on_channel(B, n_components)
+                            
+                            # Combine channels
+                            status_text.text('Reconstructing final image...')
+                            progress_bar.progress(90)
+                            
+                            # Ensure values are in valid range
+                            R_reconstructed = np.clip(R_reconstructed, 0, 255)
+                            G_reconstructed = np.clip(G_reconstructed, 0, 255)
+                            B_reconstructed = np.clip(B_reconstructed, 0, 255)
+                            
+                            reconstructed_image = np.stack(
+                                [R_reconstructed, G_reconstructed, B_reconstructed], axis=2
+                            ).astype(np.uint8)
+                            
+                            progress_bar.progress(100)
+                            status_text.text('Analysis complete!')
+                            time.sleep(0.5)
+                            progress_bar.empty()
+                            status_text.empty()
+                            
+                            # Display results
+                            st.subheader("🔍 Results")
+                            
+                            # Basic comparison
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**Original Image**")
+                                st.image(image_np, use_column_width=True)
+                            with col2:
+                                st.markdown(f"**PCA Reconstructed ({n_components} components)**")
+                                st.image(reconstructed_image, use_column_width=True)
+                            
+                            # Quality metrics
+                            if show_metrics:
+                                st.subheader("📊 Quality Metrics")
+                                
+                                # Calculate metrics for each channel
+                                R_metrics = calculate_compression_metrics(R, R_reconstructed, n_components, max_components)
+                                G_metrics = calculate_compression_metrics(G, G_reconstructed, n_components, max_components)
+                                B_metrics = calculate_compression_metrics(B, B_reconstructed, n_components, max_components)
+                                
+                                # Overall metrics
+                                overall_metrics = calculate_compression_metrics(image_np, reconstructed_image, n_components, max_components)
+                                
+                                col1, col2, col3, col4 = st.columns(4)
+                                with col1:
+                                    st.metric("Compression Ratio", f"{overall_metrics['compression_ratio']:.1f}:1")
+                                with col2:
+                                    st.metric("Data Retention", f"{overall_metrics['data_retention']:.1f}%")
+                                with col3:
+                                    st.metric("PSNR", f"{overall_metrics['psnr']:.2f} dB")
+                                with col4:
+                                    st.metric("MSE", f"{overall_metrics['mse']:.2f}")
+                                
+                                # Channel-wise metrics table
+                                st.markdown("**Channel-wise Metrics**")
+                                metrics_data = {
+                                    'Channel': ['Red', 'Green', 'Blue'],
+                                    'MSE': [f"{R_metrics['mse']:.2f}", f"{G_metrics['mse']:.2f}", f"{B_metrics['mse']:.2f}"],
+                                    'PSNR (dB)': [f"{R_metrics['psnr']:.2f}", f"{G_metrics['psnr']:.2f}", f"{B_metrics['psnr']:.2f}"],
+                                    'Variance Explained': [f"{sum(R_var):.1%}", f"{sum(G_var):.1%}", f"{sum(B_var):.1%}"]
+                                }
+                                st.table(metrics_data)
+                            
+                            # Variance analysis
+                            if show_variance_plot:
+                                st.subheader("📈 Variance Analysis")
+                                variance_ratios = [R_var, G_var, B_var]
+                                channel_names = ['Red', 'Green', 'Blue']
+                                colors = ['red', 'green', 'blue']
+                                
+                                fig = plot_cumulative_variance(variance_ratios, channel_names, colors)
+                                st.pyplot(fig)
+                                
+                                # Components needed for different variance thresholds
+                                st.markdown("**Components needed for variance thresholds:**")
+                                for threshold in [0.8, 0.9, 0.95, 0.99]:
+                                    components_needed = []
+                                    for var_ratio in variance_ratios:
+                                        cumsum = np.cumsum(var_ratio)
+                                        needed = np.argmax(cumsum >= threshold) + 1
+                                        components_needed.append(needed)
+                                    
+                                    avg_needed = int(np.mean(components_needed))
+                                    st.write(f"- {threshold:.0%} variance: ~{avg_needed} components (R:{components_needed[0]}, G:{components_needed[1]}, B:{components_needed[2]})")
+                            
+                            # Detailed comparison
+                            if show_comparison_grid:
+                                st.subheader("🔬 Detailed Comparison")
+                                fig = create_comparison_grid(image_np, reconstructed_image, n_components)
+                                st.pyplot(fig)
+                            
+                            st.success("✅ PCA Analysis Completed Successfully!")
+                            
+                            # Download option
+                            st.subheader("💾 Download Results")
+                            if st.button("Prepare Download"):
+                                reconstructed_pil = Image.fromarray(reconstructed_image)
+                                st.download_button(
+                                    label="Download Reconstructed Image",
+                                    data=reconstructed_pil.tobytes(),
+                                    file_name=f"pca_reconstructed_{n_components}_components.png",
+                                    mime="image/png"
+                                )
+
+                    else:
+                        st.info("📁 Upload an image to begin PCA analysis.")
+                        
+                        # Show example information
+                        st.subheader("ℹ️ About PCA Image Analysis")
+                        st.markdown("""
+                        **Principal Component Analysis (PCA)** is a dimensionality reduction technique that can be used for image compression:
+                        
+                        - **How it works**: PCA finds the directions (principal components) of maximum variance in the data
+                        - **Image compression**: By keeping only the most important components, we can reconstruct images with fewer data
+                        - **Trade-off**: Fewer components = more compression but lower quality
+                        - **Applications**: Image compression, noise reduction, feature extraction
+                        
+                        **This tool analyzes each RGB channel separately** to provide detailed insights into how PCA affects different color components.
+                        """)
+                        
+                        st.subheader("🚀 Features")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("""
+                            **Analysis Options:**
+                            - Manual component selection
+                            - Variance threshold-based selection
+                            - Compression ratio-based selection
+                            - Quality metrics (PSNR, MSE)
+                            """)
+                        with col2:
+                            st.markdown("""
+                            **Visualizations:**
+                            - Variance analysis plots
+                            - Cumulative variance tracking
+                            - Difference visualization
+                            - Pixel intensity histograms
+                            """)
+
+                elif page1 == "Frequency Domain Analysis":
+                    st.title("📊 Advanced Image Frequency Domain Analysis")
+                    st.markdown("*Explore the frequency domain properties of your images with various filtering techniques*")
+
+                    # Sidebar controls
+                    st.sidebar.header("🔧 Controls")
+
+                    # Upload image
+                    uploaded_file = st.file_uploader("Upload an image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
+
+                    if uploaded_file:
+                        # Load and preprocess image
+                        image = Image.open(uploaded_file).convert("L")
+                        img_array = np.array(image)
+                        
+                        # Normalize image for better processing
+                        img_array = img_array.astype(np.float32) / 255.0
+                        
+                        # Main layout
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.subheader("📷 Original Image")
+                            st.image(image, caption="Grayscale Image", use_column_width=True)
+                            
+                            # Image statistics
+                            with st.expander("📊 Image Statistics"):
+                                st.write(f"**Dimensions:** {img_array.shape[1]} × {img_array.shape[0]} pixels")
+                                st.write(f"**Mean Intensity:** {np.mean(img_array):.3f}")
+                                st.write(f"**Standard Deviation:** {np.std(img_array):.3f}")
+                                st.write(f"**Min/Max Values:** {np.min(img_array):.3f} / {np.max(img_array):.3f}")
+
+                        with col2:
+                            st.subheader("🔍 FFT Magnitude Spectrum")
+                            
+                            # Compute FFT
+                            f = np.fft.fft2(img_array)
+                            fshift = np.fft.fftshift(f)
+                            magnitude_spectrum = 20 * np.log(np.abs(fshift) + 1e-10)  # Add small value to avoid log(0)
+
+                            fig, ax = plt.subplots(figsize=(6, 6))
+                            im = ax.imshow(magnitude_spectrum, cmap="hot", aspect='equal')
+                            ax.set_title("Log Magnitude Spectrum", fontsize=12)
+                            ax.axis("off")
+                            plt.colorbar(im, ax=ax, shrink=0.8)
+                            st.pyplot(fig)
+
+                        # Advanced filtering controls
+                        st.sidebar.header("🎛️ Filter Parameters")
+                        
+                        filter_type = st.sidebar.selectbox(
+                            "Filter Type", 
+                            ["Low Pass", "High Pass", "Band Pass", "Band Stop", "Gaussian Low Pass", "Gaussian High Pass"]
+                        )
+                        
+                        if filter_type in ["Band Pass", "Band Stop"]:
+                            inner_radius = st.sidebar.slider("Inner Radius", 1, min(img_array.shape)//4, 15)
+                            outer_radius = st.sidebar.slider("Outer Radius", inner_radius+1, min(img_array.shape)//2, 50)
+                        else:
+                            radius = st.sidebar.slider("Cut-off Radius", 1, min(img_array.shape)//2, 30)
+                        
+                        # Additional parameters for Gaussian filters
+                        if "Gaussian" in filter_type:
+                            sigma = st.sidebar.slider("Gaussian Sigma", 0.1, 5.0, 1.0, 0.1)
+
+                        # Create filter mask
+                        rows, cols = img_array.shape
+                        crow, ccol = rows//2, cols//2
+                        
+                        # Create coordinate matrices
+                        y, x = np.ogrid[:rows, :cols]
+                        center = np.array([crow, ccol])
+                        distance = np.sqrt((x - ccol)**2 + (y - crow)**2)
+                        
+                        # Generate different types of masks
+                        mask = np.zeros((rows, cols), dtype=np.float32)
+                        
+                        if filter_type == "Low Pass":
+                            mask = (distance <= radius).astype(np.float32)
+                        elif filter_type == "High Pass":
+                            mask = (distance > radius).astype(np.float32)
+                        elif filter_type == "Band Pass":
+                            mask = ((distance >= inner_radius) & (distance <= outer_radius)).astype(np.float32)
+                        elif filter_type == "Band Stop":
+                            mask = ((distance < inner_radius) | (distance > outer_radius)).astype(np.float32)
+                        elif filter_type == "Gaussian Low Pass":
+                            mask = np.exp(-(distance**2) / (2 * (radius * sigma)**2))
+                        elif filter_type == "Gaussian High Pass":
+                            mask = 1 - np.exp(-(distance**2) / (2 * (radius * sigma)**2))
+
+                        # Apply filter and inverse FFT
+                        fshift_filtered = fshift * mask
+                        f_ishift = np.fft.ifftshift(fshift_filtered)
+                        img_back = np.fft.ifft2(f_ishift)
+                        img_back = np.abs(img_back)
+
+                        # Display results
+                        st.subheader(f"🧪 Results: {filter_type} Filter")
+                        
+                        col3, col4, col5 = st.columns(3)
+                        
+                        with col3:
+                            st.write("**Filter Mask**")
+                            fig, ax = plt.subplots(figsize=(5, 5))
+                            im = ax.imshow(mask, cmap="viridis", aspect='equal')
+                            ax.set_title("Filter Mask")
+                            ax.axis("off")
+                            plt.colorbar(im, ax=ax, shrink=0.8)
+                            st.pyplot(fig)
+                        
+                        with col4:
+                            st.write("**Filtered Spectrum**")
+                            filtered_magnitude = 20 * np.log(np.abs(fshift_filtered) + 1e-10)
+                            fig, ax = plt.subplots(figsize=(5, 5))
+                            im = ax.imshow(filtered_magnitude, cmap="hot", aspect='equal')
+                            ax.set_title("Filtered Spectrum")
+                            ax.axis("off")
+                            plt.colorbar(im, ax=ax, shrink=0.8)
+                            st.pyplot(fig)
+                        
+                        with col5:
+                            st.write("**Filtered Image**")
+                            fig, ax = plt.subplots(figsize=(5, 5))
+                            ax.imshow(img_back, cmap="gray", aspect='equal')
+                            ax.set_title("Reconstructed Image")
+                            ax.axis("off")
+                            st.pyplot(fig)
+
+                        # Comparison section
+                        st.subheader("📈 Before vs After Comparison")
+                        
+                        comparison_col1, comparison_col2 = st.columns(2)
+                        
+                        with comparison_col1:
+                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+                            
+                            ax1.imshow(img_array, cmap="gray")
+                            ax1.set_title("Original Image")
+                            ax1.axis("off")
+                            
+                            ax2.imshow(img_back, cmap="gray")
+                            ax2.set_title("Filtered Image")
+                            ax2.axis("off")
+                            
+                            plt.tight_layout()
+                            st.pyplot(fig)
+                        
+                        with comparison_col2:
+                            # Difference image
+                            difference = np.abs(img_array - img_back)
+                            fig, ax = plt.subplots(figsize=(5, 4))
+                            im = ax.imshow(difference, cmap="hot")
+                            ax.set_title("Difference Image")
+                            ax.axis("off")
+                            plt.colorbar(im, ax=ax, shrink=0.8)
+                            st.pyplot(fig)
+                            
+                            # Metrics
+                            st.write("**Quality Metrics:**")
+                            mse = np.mean((img_array - img_back)**2)
+                            psnr = 20 * np.log10(1.0 / np.sqrt(mse)) if mse > 0 else float('inf')
+                            st.write(f"MSE: {mse:.6f}")
+                            st.write(f"PSNR: {psnr:.2f} dB")
+
+                        # Advanced analysis
+                        with st.expander("🔬 Advanced Analysis"):
+                            analysis_tabs = st.tabs(["Phase Spectrum", "1D Frequency Profile", "Filter Response"])
+                            
+                            with analysis_tabs[0]:
+                                phase_spectrum = np.angle(fshift)
+                                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+                                
+                                im1 = ax1.imshow(phase_spectrum, cmap="twilight")
+                                ax1.set_title("Original Phase Spectrum")
+                                ax1.axis("off")
+                                plt.colorbar(im1, ax=ax1, shrink=0.8)
+                                
+                                filtered_phase = np.angle(fshift_filtered)
+                                im2 = ax2.imshow(filtered_phase, cmap="twilight")
+                                ax2.set_title("Filtered Phase Spectrum")
+                                ax2.axis("off")
+                                plt.colorbar(im2, ax=ax2, shrink=0.8)
+                                
+                                st.pyplot(fig)
+                            
+                            with analysis_tabs[1]:
+                                # 1D radial profile
+                                center_row = magnitude_spectrum[crow, :]
+                                center_col = magnitude_spectrum[:, ccol]
+                                
+                                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+                                
+                                ax1.plot(center_row, 'b-', linewidth=2, label='Horizontal profile')
+                                ax1.set_title('Horizontal Frequency Profile (through center)')
+                                ax1.set_xlabel('Frequency bin')
+                                ax1.set_ylabel('Magnitude (dB)')
+                                ax1.grid(True, alpha=0.3)
+                                ax1.legend()
+                                
+                                ax2.plot(center_col, 'r-', linewidth=2, label='Vertical profile')
+                                ax2.set_title('Vertical Frequency Profile (through center)')
+                                ax2.set_xlabel('Frequency bin')
+                                ax2.set_ylabel('Magnitude (dB)')
+                                ax2.grid(True, alpha=0.3)
+                                ax2.legend()
+                                
+                                plt.tight_layout()
+                                st.pyplot(fig)
+                            
+                            with analysis_tabs[2]:
+                                # Filter frequency response
+                                fig, ax = plt.subplots(figsize=(8, 6))
+                                
+                                # Radial profile of the filter
+                                distances = np.arange(0, min(rows, cols)//2)
+                                if filter_type == "Low Pass":
+                                    response = (distances <= radius).astype(float)
+                                elif filter_type == "High Pass":
+                                    response = (distances > radius).astype(float)
+                                elif filter_type == "Gaussian Low Pass":
+                                    response = np.exp(-(distances**2) / (2 * (radius * sigma)**2))
+                                elif filter_type == "Gaussian High Pass":
+                                    response = 1 - np.exp(-(distances**2) / (2 * (radius * sigma)**2))
+                                else:
+                                    # For band filters, use center distance for visualization
+                                    if filter_type == "Band Pass":
+                                        response = ((distances >= inner_radius) & (distances <= outer_radius)).astype(float)
+                                    else:  # Band Stop
+                                        response = ((distances < inner_radius) | (distances > outer_radius)).astype(float)
+                                
+                                ax.plot(distances, response, 'g-', linewidth=3, label=f'{filter_type} Filter')
+                                ax.set_xlabel('Distance from center (pixels)')
+                                ax.set_ylabel('Filter Response')
+                                ax.set_title('Filter Frequency Response')
+                                ax.grid(True, alpha=0.3)
+                                ax.legend()
+                                ax.set_ylim(-0.1, 1.1)
+                                
+                                st.pyplot(fig)
+
+                        # Export options
+                        st.sidebar.header("💾 Export Options")
+                        
+                        if st.sidebar.button("Download Filtered Image"):
+                            # Convert back to uint8 for saving
+                            filtered_uint8 = (np.clip(img_back, 0, 1) * 255).astype(np.uint8)
+                            filtered_pil = Image.fromarray(filtered_uint8, mode='L')
+                            
+                            # Note: In a real Streamlit app, you'd use st.download_button here
+                            st.sidebar.success("Image ready for download!")
+                            st.sidebar.info("In a full Streamlit deployment, this would trigger a download.")
+
+                    else:
+                        st.info("👆 Please upload an image to start the frequency domain analysis!")
+                        
+                        # Show example of what the tool can do
+                        st.subheader("🎯 What this tool does:")
+                        st.markdown("""
+                        - **FFT Analysis**: Converts images to frequency domain using Fast Fourier Transform
+                        - **Multiple Filters**: Apply various frequency filters (Low-pass, High-pass, Band-pass, etc.)
+                        - **Real-time Visualization**: See immediate results of filter applications
+                        - **Advanced Analysis**: Examine phase spectra, frequency profiles, and filter responses
+                        - **Quality Metrics**: Calculate MSE and PSNR to evaluate filtering effects
+                        
+                        **Use Cases:**
+                        - Noise reduction (low-pass filtering)
+                        - Edge enhancement (high-pass filtering)  
+                        - Feature extraction and analysis
+                        - Understanding image frequency characteristics
+                        """)
+
+                elif page1 == "Statistical Analysis":
+                    st.title("📊 Advanced Image Statistical Analysis")
+
+                    uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png", "bmp", "tiff", "webp"])
+
+                    if uploaded_file:
+                        image = Image.open(uploaded_file).convert('RGB')
+                        img_array = np.array(image)
+
+                        # Display basic image info
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.image(image, caption="Uploaded Image", use_column_width=True)
+                        
+                        with col2:
+                            st.subheader("Image Properties")
+                            st.write(f"**Dimensions**: {img_array.shape[1]} × {img_array.shape[0]} pixels")
+                            st.write(f"**Total Pixels**: {img_array.shape[0] * img_array.shape[1]:,}")
+                            st.write(f"**Channels**: {img_array.shape[2]}")
+                            st.write(f"**File Size**: {len(uploaded_file.getvalue()) / 1024:.1f} KB")
+
+                        st.header("🧮 Statistical Metrics")
+                        r, g, b = img_array[:,:,0], img_array[:,:,1], img_array[:,:,2]
+                        gray = np.mean(img_array, axis=2).astype(np.uint8)
+                        
+                        def calc_stats(channel, name):
+                            flat_channel = channel.flatten()
+                            stats = {
+                                "Mean": np.mean(flat_channel),
+                                "Median": np.median(flat_channel),
+                                "Mode": np.bincount(flat_channel).argmax(),
+                                "Standard Deviation": np.std(flat_channel),
+                                "Variance": np.var(flat_channel),
+                                "Min": np.min(flat_channel),
+                                "Max": np.max(flat_channel),
+                                "Range": np.max(flat_channel) - np.min(flat_channel),
+                                "Skewness": skew(flat_channel),
+                                "Kurtosis": kurtosis(flat_channel),
+                                "Entropy": entropy(np.histogram(flat_channel, bins=256)[0]+1),
+                                "25th Percentile": np.percentile(flat_channel, 25),
+                                "75th Percentile": np.percentile(flat_channel, 75),
+                                "IQR": np.percentile(flat_channel, 75) - np.percentile(flat_channel, 25)
+                            }
+                            
+                            with st.expander(f"{name} Channel Statistics"):
+                                col1, col2 = st.columns(2)
+                                items = list(stats.items())
+                                mid = len(items) // 2
+                                
+                                with col1:
+                                    for k, v in items[:mid]:
+                                        st.metric(label=k, value=f"{v:.4f}")
+                                
+                                with col2:
+                                    for k, v in items[mid:]:
+                                        st.metric(label=k, value=f"{v:.4f}")
+                        
+                        calc_stats(r, "Red")
+                        calc_stats(g, "Green")
+                        calc_stats(b, "Blue")
+                        calc_stats(gray, "Grayscale")
+
+                        # Color Analysis
+                        st.header("🎨 Color Analysis")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.subheader("Dominant Colors")
+                            # Extract dominant colors using K-means
+                            pixels = img_array.reshape(-1, 3)
+                            n_colors = st.slider("Number of dominant colors", 2, 10, 5)
+                            
+                            kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init=10)
+                            kmeans.fit(pixels)
+                            colors = kmeans.cluster_centers_.astype(int)
+                            
+                            # Create color palette
+                            fig_palette, ax_palette = plt.subplots(figsize=(8, 2))
+                            ax_palette.imshow([colors], aspect='auto')
+                            ax_palette.set_xticks(range(n_colors))
+                            ax_palette.set_xticklabels([f'RGB({c[0]},{c[1]},{c[2]})' for c in colors], rotation=45)
+                            ax_palette.set_yticks([])
+                            ax_palette.set_title("Dominant Colors")
+                            st.pyplot(fig_palette)
+                        
+                        with col2:
+                            st.subheader("Color Temperature Analysis")
+                            # Calculate color temperature metrics
+                            avg_rgb = np.mean(pixels, axis=0)
+                            
+                            # Warmth index (more red/yellow vs blue)
+                            warmth = (avg_rgb[0] + avg_rgb[1]) / (2 * avg_rgb[2]) if avg_rgb[2] > 0 else float('inf')
+                            
+                            # Saturation (deviation from grayscale)
+                            saturation = np.std(avg_rgb) / np.mean(avg_rgb) if np.mean(avg_rgb) > 0 else 0
+                            
+                            st.metric("Warmth Index", f"{warmth:.3f}", help="Higher values indicate warmer colors")
+                            st.metric("Saturation Index", f"{saturation:.3f}", help="Higher values indicate more colorful image")
+                            st.metric("Brightness", f"{np.mean(gray):.1f}/255", help="Average brightness level")
+
+                        st.header("📈 Advanced Visualizations")
+
+                        # Create tabs for different visualizations
+                        tab1, tab2, tab3, tab4 = st.tabs(["Histograms", "2D Histograms", "Scatter Plots", "Distribution Analysis"])
+                        
+                        with tab1:
+                            fig, axs = plt.subplots(2, 2, figsize=(14, 10))
+
+                            # Grayscale histogram
+                            axs[0,0].hist(gray.ravel(), bins=256, color='gray', alpha=0.7)
+                            axs[0,0].set_title("Grayscale Histogram")
+                            axs[0,0].set_xlabel("Pixel Value")
+                            axs[0,0].set_ylabel("Frequency")
+                            axs[0,0].grid(True, alpha=0.3)
+
+                            # Color histogram
+                            axs[0,1].hist(r.ravel(), bins=256, color='red', alpha=0.5, label='Red')
+                            axs[0,1].hist(g.ravel(), bins=256, color='green', alpha=0.5, label='Green')
+                            axs[0,1].hist(b.ravel(), bins=256, color='blue', alpha=0.5, label='Blue')
+                            axs[0,1].set_title("RGB Histogram")
+                            axs[0,1].set_xlabel("Pixel Value")
+                            axs[0,1].set_ylabel("Frequency")
+                            axs[0,1].legend()
+                            axs[0,1].grid(True, alpha=0.3)
+
+                            # Cumulative histogram
+                            axs[1,0].hist(gray.ravel(), bins=256, cumulative=True, color='gray', alpha=0.7)
+                            axs[1,0].set_title("Cumulative Histogram")
+                            axs[1,0].set_xlabel("Pixel Value")
+                            axs[1,0].set_ylabel("Cumulative Frequency")
+                            axs[1,0].grid(True, alpha=0.3)
+
+                            # Log histogram
+                            counts, bins = np.histogram(gray.ravel(), bins=256)
+                            axs[1,1].bar(bins[:-1], np.log(counts + 1), width=1, color='gray', alpha=0.7)
+                            axs[1,1].set_title("Log Histogram")
+                            axs[1,1].set_xlabel("Pixel Value")
+                            axs[1,1].set_ylabel("Log(Frequency)")
+                            axs[1,1].grid(True, alpha=0.3)
+
+                            plt.tight_layout()
+                            st.pyplot(fig)
+                        
+                        with tab2:
+                            fig_2d, axs_2d = plt.subplots(1, 3, figsize=(15, 5))
+                            
+                            # RGB 2D histograms
+                            axs_2d[0].hist2d(r.ravel(), g.ravel(), bins=50, cmap='Reds')
+                            axs_2d[0].set_title("Red vs Green")
+                            axs_2d[0].set_xlabel("Red Channel")
+                            axs_2d[0].set_ylabel("Green Channel")
+                            
+                            axs_2d[1].hist2d(r.ravel(), b.ravel(), bins=50, cmap='Blues')
+                            axs_2d[1].set_title("Red vs Blue")
+                            axs_2d[1].set_xlabel("Red Channel")
+                            axs_2d[1].set_ylabel("Blue Channel")
+                            
+                            axs_2d[2].hist2d(g.ravel(), b.ravel(), bins=50, cmap='Greens')
+                            axs_2d[2].set_title("Green vs Blue")
+                            axs_2d[2].set_xlabel("Green Channel")
+                            axs_2d[2].set_ylabel("Blue Channel")
+                            
+                            plt.tight_layout()
+                            st.pyplot(fig_2d)
+                        
+                        with tab3:
+                            # Scatter plots with correlation
+                            fig_scatter, axs_scatter = plt.subplots(1, 3, figsize=(15, 5))
+                            
+                            # Sample data for performance (use every nth pixel)
+                            step = max(1, len(pixels) // 10000)  # Limit to ~10k points
+                            sample_pixels = pixels[::step]
+                            
+                            corr_rg = pearsonr(sample_pixels[:, 0], sample_pixels[:, 1])[0]
+                            corr_rb = pearsonr(sample_pixels[:, 0], sample_pixels[:, 2])[0]
+                            corr_gb = pearsonr(sample_pixels[:, 1], sample_pixels[:, 2])[0]
+                            
+                            axs_scatter[0].scatter(sample_pixels[:, 0], sample_pixels[:, 1], alpha=0.1, s=1)
+                            axs_scatter[0].set_title(f"Red vs Green (r={corr_rg:.3f})")
+                            axs_scatter[0].set_xlabel("Red")
+                            axs_scatter[0].set_ylabel("Green")
+                            
+                            axs_scatter[1].scatter(sample_pixels[:, 0], sample_pixels[:, 2], alpha=0.1, s=1)
+                            axs_scatter[1].set_title(f"Red vs Blue (r={corr_rb:.3f})")
+                            axs_scatter[1].set_xlabel("Red")
+                            axs_scatter[1].set_ylabel("Blue")
+                            
+                            axs_scatter[2].scatter(sample_pixels[:, 1], sample_pixels[:, 2], alpha=0.1, s=1)
+                            axs_scatter[2].set_title(f"Green vs Blue (r={corr_gb:.3f})")
+                            axs_scatter[2].set_xlabel("Green")
+                            axs_scatter[2].set_ylabel("Blue")
+                            
+                            plt.tight_layout()
+                            st.pyplot(fig_scatter)
+                        
+                        with tab4:
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                # Channel correlation heatmap
+                                st.subheader("Channel Correlation Matrix")
+                                flat_rgb = img_array.reshape(-1, 3)
+                                corr_matrix = np.corrcoef(flat_rgb.T)
+                                
+                                fig_corr, ax_corr = plt.subplots(figsize=(6, 4))
+                                sns.heatmap(corr_matrix, annot=True, fmt=".3f", 
+                                        xticklabels=["Red", "Green", "Blue"], 
+                                        yticklabels=["Red", "Green", "Blue"], 
+                                        ax=ax_corr, cmap='coolwarm', center=0)
+                                ax_corr.set_title("RGB Channel Correlations")
+                                st.pyplot(fig_corr)
+                            
+                            with col2:
+                                # KDE distribution plot
+                                st.subheader("Intensity Distribution (KDE)")
+                                fig_kde, ax_kde = plt.subplots(figsize=(6, 4))
+                                sns.kdeplot(data=r.flatten(), color="red", label="Red", ax=ax_kde, alpha=0.7)
+                                sns.kdeplot(data=g.flatten(), color="green", label="Green", ax=ax_kde, alpha=0.7)
+                                sns.kdeplot(data=b.flatten(), color="blue", label="Blue", ax=ax_kde, alpha=0.7)
+                                sns.kdeplot(data=gray.flatten(), color="black", label="Grayscale", ax=ax_kde, alpha=0.7)
+                                ax_kde.set_title("Pixel Intensity Distribution")
+                                ax_kde.set_xlabel("Pixel Value")
+                                ax_kde.set_ylabel("Density")
+                                ax_kde.legend()
+                                st.pyplot(fig_kde)
+
+                        # Advanced Analysis Section
+                        st.header("🔬 Advanced Analysis")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.subheader("Image Quality Metrics")
+                            
+                            # Contrast ratio
+                            contrast = np.std(gray) / np.mean(gray) if np.mean(gray) > 0 else 0
+                            
+                            # Dynamic range
+                            dynamic_range = np.max(gray) - np.min(gray)
+                            
+                            # Entropy (information content)
+                            img_entropy = entropy(np.histogram(gray, bins=256)[0] + 1)
+                            
+                            st.metric("Contrast Ratio", f"{contrast:.3f}")
+                            st.metric("Dynamic Range", f"{dynamic_range}/255")
+                            st.metric("Information Content", f"{img_entropy:.3f}")
+                        
+                        with col2:
+                            st.subheader("Color Distribution")
+                            
+                            # Calculate color moments
+                            mean_color = np.mean(pixels, axis=0)
+                            std_color = np.std(pixels, axis=0)
+                            
+                            st.write("**Mean RGB:**")
+                            st.write(f"R: {mean_color[0]:.1f}, G: {mean_color[1]:.1f}, B: {mean_color[2]:.1f}")
+                            
+                            st.write("**Standard Deviation:**")
+                            st.write(f"R: {std_color[0]:.1f}, G: {std_color[1]:.1f}, B: {std_color[2]:.1f}")
+                        
+                        with col3:
+                            st.subheader("Histogram Statistics")
+                            
+                            # Peak analysis
+                            hist_gray, _ = np.histogram(gray, bins=256)
+                            peak_value = np.argmax(hist_gray)
+                            peak_count = np.max(hist_gray)
+                            
+                            # Histogram spread
+                            hist_spread = np.std(np.repeat(range(256), hist_gray))
+                            
+                            st.metric("Peak Intensity", f"{peak_value}")
+                            st.metric("Peak Frequency", f"{peak_count:,}")
+                            st.metric("Histogram Spread", f"{hist_spread:.1f}")
+
+                        # Export functionality
+                        st.header("💾 Export Analysis")
+                        
+                        if st.button("Generate Analysis Report"):
+                            report = f"""
+                    # Image Statistical Analysis Report
+
+                    ## Image Properties
+                    - Dimensions: {img_array.shape[1]} × {img_array.shape[0]} pixels
+                    - Total Pixels: {img_array.shape[0] * img_array.shape[1]:,}
+                    - File Size: {len(uploaded_file.getvalue()) / 1024:.1f} KB
+
+                    ## Statistical Summary
+                    - Mean Brightness: {np.mean(gray):.2f}
+                    - Contrast Ratio: {contrast:.3f}
+                    - Dynamic Range: {dynamic_range}/255
+                    - Information Content: {img_entropy:.3f}
+
+                    ## Color Analysis
+                    - Warmth Index: {warmth:.3f}
+                    - Saturation Index: {saturation:.3f}
+                    - Mean RGB: ({mean_color[0]:.1f}, {mean_color[1]:.1f}, {mean_color[2]:.1f})
+
+                    ## Channel Correlations
+                    - Red-Green: {corr_rg:.3f}
+                    - Red-Blue: {corr_rb:.3f}
+                    - Green-Blue: {corr_gb:.3f}
+                            """
+                            
+                            st.download_button(
+                                label="Download Report",
+                                data=report,
+                                file_name=f"image_analysis_{uploaded_file.name}.txt",
+                                mime="text/plain"
+                            )
+
+                    else:
+                        st.info("👆 Upload an image to begin analysis")
+                        st.markdown("""
+                        ### Features:
+                        - 📊 Comprehensive statistical metrics for each color channel
+                        - 🎨 Dominant color extraction and analysis
+                        - 📈 Multiple visualization types (histograms, scatter plots, KDE)
+                        - 🔗 Channel correlation analysis
+                        - 🔬 Advanced image quality metrics
+                        - 💾 Exportable analysis reports
+                        
+                        ### Supported formats:
+                        JPG, JPEG, PNG, BMP, TIFF, WebP
+                        """)
+
+
 if __name__ == "__main__":
     main()
