@@ -16,8 +16,11 @@ from datetime import datetime, timedelta, timezone
 import requests
 import time
 import piexif
+import folium
+from streamlit_folium import st_folium
 from bson import ObjectId
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import cv2
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ExifTags
@@ -2113,11 +2116,15 @@ def main():
                     
                     # Image overview
                     with st.expander("📁 Basic File Info", expanded=False):
-                        col1, col2, col3 = st.columns([1, 1, 1])
+                        col1, col2, col3, col4 = st.columns([0.9,0.1, 1, 1])
                         with col1:
                             st.image(image, caption="Original Image")
-                        
                         with col2:
+                            st.markdown("""
+                            <div style='height: 300px; border-left: 2px solid #ccc; margin: 10px;'></div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col3:
                             st.markdown(f"""
                             <div class="metric-card">
                                 <h4>📏 Image Info</h4>
@@ -2127,7 +2134,7 @@ def main():
                             </div>
                             """, unsafe_allow_html=True)
                         
-                        with col3:
+                        with col4:
                             # Quick authenticity score
                             authenticity_score = np.random.randint(60, 95)  # Placeholder
                             color = "green" if authenticity_score > 80 else "orange" if authenticity_score > 60 else "red"
@@ -4002,7 +4009,631 @@ def main():
                     st.title("Compression History")
 
                 elif page1 == "Geolocation Data":
-                    st.title("Compression History")
+                    def get_exif_data(image):
+                        """Extract EXIF data including GPS info."""
+                        exif_data = {}
+                        try:
+                            info = image._getexif()
+                            if not info:
+                                return {}
+                            for tag, value in info.items():
+                                tag_name = TAGS.get(tag, tag)
+                                if tag_name == "GPSInfo":
+                                    gps_data = {}
+                                    for t in value:
+                                        sub_tag = GPSTAGS.get(t, t)
+                                        gps_data[sub_tag] = value[t]
+                                    exif_data["GPSInfo"] = gps_data
+                                else:
+                                    exif_data[tag_name] = value
+                        except Exception as e:
+                            st.error(f"EXIF extraction failed: {e}")
+                        return exif_data
+
+                    def convert_to_degrees(value):
+                        """Convert GPS coordinates to degrees in float format from IFDRational or tuple."""
+                        try:
+                            d = float(value[0])
+                            m = float(value[1])
+                            s = float(value[2])
+                            return d + (m / 60.0) + (s / 3600.0)
+                        except Exception as e:
+                            st.error(f"Error converting to degrees: {e}")
+                            return None
+
+                    def extract_gps_coords(gps_info):
+                        try:
+                            # Latitude
+                            lat = convert_to_degrees(gps_info['GPSLatitude'])
+                            ref_lat = gps_info['GPSLatitudeRef']
+                            if isinstance(ref_lat, bytes):
+                                ref_lat = ref_lat.decode()
+                            if ref_lat != 'N':
+                                lat = -lat
+
+                            # Longitude
+                            lon = convert_to_degrees(gps_info['GPSLongitude'])
+                            ref_lon = gps_info['GPSLongitudeRef']
+                            if isinstance(ref_lon, bytes):
+                                ref_lon = ref_lon.decode()
+                            if ref_lon != 'E':
+                                lon = -lon
+
+                            # Altitude
+                            altitude = None
+                            if 'GPSAltitude' in gps_info:
+                                alt_val = gps_info['GPSAltitude']
+                                if isinstance(alt_val, (tuple, list)) and len(alt_val) == 2:
+                                    altitude = float(alt_val[0]) / float(alt_val[1])
+                                else:
+                                    altitude = float(alt_val)
+
+                            # Time
+                            gps_time = gps_info.get('GPSTimeStamp')
+                            formatted_time = None
+                            if gps_time:
+                                try:
+                                    formatted_time = ":".join([str(int(float(x[0]) / float(x[1]))) for x in gps_time])
+                                except:
+                                    formatted_time = str(gps_time)
+
+                            # Date
+                            gps_date = gps_info.get('GPSDateStamp')
+                            if isinstance(gps_date, bytes):
+                                gps_date = gps_date.decode(errors='ignore')
+
+                            # Processing Method
+                            processing_method = gps_info.get('GPSProcessingMethod')
+                            if isinstance(processing_method, bytes):
+                                processing_method = processing_method.decode(errors='ignore').replace("\x00", "")
+
+                            # Version
+                            gps_version = gps_info.get('GPSVersionID')
+
+                            # Clean version data if it's a tuple/bytes
+                            clean_version = None
+                            if gps_version:
+                                if isinstance(gps_version, (tuple, list)):
+                                    clean_version = ".".join(str(x) for x in gps_version)
+                                else:
+                                    clean_version = str(gps_version)
+
+                            return {
+                                "Parsed Data": {
+                                    'Latitude': lat,
+                                    'Longitude': lon,
+                                    'Altitude': altitude,
+                                    'Time': formatted_time,
+                                    'Date': gps_date,
+                                    'ProcessingMethod': processing_method,
+                                    'Version': clean_version,
+                                },
+                                "Raw GPSInfo": {str(k): str(v) for k, v in gps_info.items()}
+                            }
+
+                        except Exception as e:
+                            st.warning(f"Could not extract GPS coordinates: {e}")
+                            return None
+
+                    def get_all_exif_data(image):
+                        """Extract all EXIF data for comprehensive metadata display."""
+                        try:
+                            exif_dict = {}
+                            info = image._getexif()
+                            if info:
+                                for tag, value in info.items():
+                                    tag_name = TAGS.get(tag, tag)
+                                    if tag_name != "GPSInfo":  # Handle GPS separately
+                                        # Convert bytes to string for display
+                                        if isinstance(value, bytes):
+                                            try:
+                                                value = value.decode('utf-8', errors='ignore')
+                                            except:
+                                                value = str(value)
+                                        exif_dict[tag_name] = str(value)
+                            return exif_dict
+                        except Exception as e:
+                            st.error(f"Error extracting EXIF data: {e}")
+                            return {}
+
+                    def format_coordinates(lat, lon):
+                        """Format coordinates in multiple formats."""
+                        def decimal_to_dms(decimal_coord):
+                            """Convert decimal degrees to degrees, minutes, seconds."""
+                            degrees = int(decimal_coord)
+                            minutes_float = abs(decimal_coord - degrees) * 60
+                            minutes = int(minutes_float)
+                            seconds = (minutes_float - minutes) * 60
+                            return degrees, minutes, seconds
+                        
+                        lat_dms = decimal_to_dms(abs(lat))
+                        lon_dms = decimal_to_dms(abs(lon))
+                        
+                        lat_dir = "N" if lat >= 0 else "S"
+                        lon_dir = "E" if lon >= 0 else "W"
+                        
+                        return {
+                            "Decimal Degrees": f"{lat:.6f}, {lon:.6f}",
+                            "DMS": f"{lat_dms[0]}°{lat_dms[1]}'{lat_dms[2]:.2f}\"{lat_dir}, {lon_dms[0]}°{lon_dms[1]}'{lon_dms[2]:.2f}\"{lon_dir}",
+                            "Google Maps URL": f"https://www.google.com/maps?q={lat},{lon}",
+                            "OpenStreetMap URL": f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=15"
+                        }
+
+                    def export_data(gps_data, exif_data, filename):
+                        """Prepare data for export."""
+                        # Clean EXIF data to ensure JSON serialization
+                        clean_exif = {}
+                        for k, v in exif_data.items():
+                            if isinstance(v, bytes):
+                                try:
+                                    clean_exif[k] = v.decode('utf-8', errors='ignore')
+                                except:
+                                    clean_exif[k] = str(v)
+                            else:
+                                clean_exif[k] = str(v) if v is not None else None
+                        
+                        # Clean GPS data recursively
+                        def clean_for_json(obj):
+                            if isinstance(obj, dict):
+                                return {k: clean_for_json(v) for k, v in obj.items()}
+                            elif isinstance(obj, (list, tuple)):
+                                return [clean_for_json(item) for item in obj]
+                            elif isinstance(obj, bytes):
+                                try:
+                                    return obj.decode('utf-8', errors='ignore')
+                                except:
+                                    return str(obj)
+                            elif obj is None:
+                                return None
+                            else:
+                                return str(obj) if not isinstance(obj, (int, float, str, bool)) else obj
+                        
+                        clean_gps_data = clean_for_json(gps_data) if gps_data else None
+                        
+                        export_dict = {
+                            "filename": filename,
+                            "extraction_timestamp": datetime.now().isoformat(),
+                            "gps_data": clean_gps_data,
+                            "camera_info": {k: v for k, v in clean_exif.items() if k in ['Make', 'Model', 'DateTime', 'Software']},
+                            "all_exif": clean_exif
+                        }
+                        return json.dumps(export_dict, indent=2)
+
+                    def create_info_card(title, value, icon="📊"):
+                        """Create a styled info card."""
+                        if value is not None and value != "":
+                            st.markdown(f"""
+                            <div style="
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                padding: 1rem;
+                                border-radius: 10px;
+                                color: white;
+                                margin: 0.5rem 0;
+                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            ">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2em;">{icon}</span>
+                                    <div>
+                                        <div style="font-size: 0.8em; opacity: 0.8;">{title}</div>
+                                        <div style="font-size: 1.1em; font-weight: bold;">{value}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                    def create_coordinate_card(format_name, coord_str, is_url=False):
+                        """Create a styled coordinate display card."""
+                        if is_url:
+                            link_color = "#4CAF50" if "Google" in format_name else "#2196F3"
+                            st.markdown(f"""
+                            <div style="
+                                background: white;
+                                border: 2px solid {link_color};
+                                padding: 1rem;
+                                border-radius: 8px;
+                                margin: 0.5rem 0;
+                                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                            ">
+                                <div style="color: #333; font-weight: bold; margin-bottom: 5px;">{format_name}</div>
+                                <a href="{coord_str}" target="_blank" style="
+                                    color: {link_color}; 
+                                    text-decoration: none; 
+                                    font-family: monospace;
+                                    word-break: break-all;
+                                ">{coord_str} →</a>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div style="
+                                background: #f8f9fa;
+                                border-left: 4px solid #007bff;
+                                padding: 1rem;
+                                border-radius: 0 8px 8px 0;
+                                margin: 0.5rem 0;
+                            ">
+                                <div style="color: #333; font-weight: bold; margin-bottom: 5px;">{format_name}</div>
+                                <code style="
+                                    background: #e9ecef; 
+                                    padding: 0.2rem 0.4rem; 
+                                    border-radius: 4px;
+                                    font-size: 1.1em;
+                                ">{coord_str}</code>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                    # -------- Streamlit UI --------
+                    # st.set_page_config(
+                    #     page_title="📍 Enhanced Image Geolocation Finder", 
+                    #     layout="wide",
+                    #     initial_sidebar_state="expanded"
+                    # )
+
+                    # Custom CSS for better styling
+                    st.markdown("""
+                    <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
+                        .upload-section {
+                            background: #f8f9fa;
+                            padding: 2rem;
+                            border-radius: 10px;
+                            border: 2px dashed #007bff;
+                            text-align: center;
+                            margin: 1rem 0;
+                        }
+                        .image-card {
+                            background: white;
+                            border-radius: 15px;
+                            padding: 1rem;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                            margin: 1rem 0;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    # Header
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>📍 Enhanced Image Geolocation Finder</h1>
+                        <p>Extract GPS metadata from your images and visualize locations on interactive maps</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Sidebar with enhanced styling
+                    st.sidebar.markdown("## ⚙️ Settings & Options")
+                    st.sidebar.markdown("---")
+
+                    # Enhanced sidebar options
+                    show_all_exif = st.sidebar.checkbox("🔍 Show detailed EXIF metadata", value=False)
+                    map_style = st.sidebar.selectbox(
+                        "🗺️ Map Style", 
+                        ["OpenStreetMap", "Stamen Terrain", "CartoDB Positron"],
+                        help="Choose your preferred map visualization style"
+                    )
+
+                    # Map zoom level
+                    map_zoom = st.sidebar.slider("🔍 Map Zoom Level", min_value=10, max_value=20, value=15)
+
+                    st.sidebar.markdown("---")
+                    st.sidebar.markdown("### 📊 Session Stats")
+                    if 'processed_images' not in st.session_state:
+                        st.session_state.processed_images = 0
+                    if 'images_with_gps' not in st.session_state:
+                        st.session_state.images_with_gps = 0
+
+                    st.sidebar.metric("Images Processed", st.session_state.processed_images)
+                    st.sidebar.metric("GPS Data Found", st.session_state.images_with_gps)
+
+                    # File uploader with enhanced styling
+                    st.markdown("""
+                    <div class="upload-section">
+                        <h3>📤 Upload Your Images</h3>
+                        <p>Drag and drop your JPEG files here, or click to browse</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    uploaded_files = st.file_uploader(
+                        "Choose images", 
+                        type=["jpg", "jpeg"], 
+                        accept_multiple_files=True,
+                        help="Upload JPEG images with GPS EXIF data. Multiple files supported."
+                    )
+
+                    if uploaded_files:
+                        # Progress bar for processing
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        # Process multiple images
+                        for i, uploaded_file in enumerate(uploaded_files):
+                            # Update progress
+                            progress = (i + 1) / len(uploaded_files)
+                            progress_bar.progress(progress)
+                            status_text.text(f"Processing {uploaded_file.name}... ({i+1}/{len(uploaded_files)})")
+                            
+                            st.markdown("---")
+                            
+                            # Image card container
+                            with st.container():
+                                st.markdown(f"""
+                                <div class="image-card">
+                                    <h2>📷 {uploaded_file.name}</h2>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                try:
+                                    image = Image.open(uploaded_file)
+                                    st.session_state.processed_images += 1
+                                    
+                                    # Create enhanced layout
+                                    col1, col2 = st.columns([1.2, 1])
+                                    
+                                    with col1:
+                                        # Enhanced image display
+                                        st.image(
+                                            image, 
+                                            caption=f"🖼️ {uploaded_file.name}", 
+                                            use_column_width=True,
+                                            clamp=True
+                                        )
+                                        
+                                        # Image info
+                                        width, height = image.size
+                                        file_size = len(uploaded_file.getvalue()) / 1024  # KB
+                                        
+                                        col1a, col1b, col1c = st.columns(3)
+                                        with col1a:
+                                            st.metric("Width", f"{width}px")
+                                        with col1b:
+                                            st.metric("Height", f"{height}px")
+                                        with col1c:
+                                            st.metric("File Size", f"{file_size:.1f} KB")
+                                    
+                                    with col2:
+                                        # Extract all EXIF data
+                                        exif_data = get_exif_data(image)
+                                        all_exif = get_all_exif_data(image)
+                                        
+                                        if "GPSInfo" in exif_data:
+                                            gps_data = extract_gps_coords(exif_data["GPSInfo"])
+                                            if gps_data:
+                                                st.success("✅ GPS Data Found!")
+                                                st.session_state.images_with_gps += 1
+                                                
+                                                lat = gps_data["Parsed Data"]['Latitude']
+                                                lon = gps_data["Parsed Data"]['Longitude']
+                                                
+                                                # GPS Info Cards
+                                                parsed_data = gps_data["Parsed Data"]
+                                                
+                                                if parsed_data.get('Altitude'):
+                                                    create_info_card("Altitude", f"{parsed_data['Altitude']:.1f}m", "⛰️")
+                                                
+                                                if parsed_data.get('Date'):
+                                                    create_info_card("Date", parsed_data['Date'], "📅")
+                                                
+                                                if parsed_data.get('Time'):
+                                                    create_info_card("Time", parsed_data['Time'], "⏰")
+                                                
+                                                if parsed_data.get('ProcessingMethod'):
+                                                    create_info_card("GPS Method", parsed_data['ProcessingMethod'], "🛰️")
+                                        
+                                        else:
+                                            st.error("❌ No GPS Data Found")
+                                            st.info("This image doesn't contain GPS metadata. Make sure location services were enabled when the photo was taken.")
+                                            gps_data = None
+                                    
+                                    # Show coordinates if GPS data exists
+                                    if "GPSInfo" in exif_data and gps_data:
+                                        st.markdown("### 📍 Location Coordinates")
+                                        
+                                        lat = gps_data["Parsed Data"]['Latitude']
+                                        lon = gps_data["Parsed Data"]['Longitude']
+                                        
+                                        coord_formats = format_coordinates(lat, lon)
+                                        
+                                        # Display coordinates in styled cards
+                                        for format_name, coord_str in coord_formats.items():
+                                            is_url = "URL" in format_name
+                                            create_coordinate_card(format_name, coord_str, is_url)
+                                    
+                                    # Enhanced map display
+                                    if "GPSInfo" in exif_data and gps_data:
+                                        st.markdown("### 🌍 Interactive Map")
+                                        
+                                        # Create map with selected style
+                                        if map_style == "Stamen Terrain":
+                                            map_ = folium.Map(
+                                                location=[lat, lon], 
+                                                zoom_start=map_zoom, 
+                                                tiles="https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png",
+                                                attr="Map tiles by Stamen Design, CC BY 3.0 — Map data © OpenStreetMap contributors"
+                                            )
+                                        elif map_style == "CartoDB Positron":
+                                            map_ = folium.Map(
+                                                location=[lat, lon], 
+                                                zoom_start=map_zoom, 
+                                                tiles="https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
+                                                attr="© OpenStreetMap contributors, © CARTO"
+                                            )
+                                        else:
+                                            map_ = folium.Map(location=[lat, lon], zoom_start=map_zoom)
+                                        
+                                        # Enhanced marker with popup info
+                                        popup_html = f"""
+                                        <div style="font-family: Arial, sans-serif; width: 250px;">
+                                            <h4 style="margin: 0 0 10px 0; color: #333;">📷 {uploaded_file.name}</h4>
+                                            <hr style="margin: 10px 0;">
+                                            <p style="margin: 5px 0;"><strong>📍 Coordinates:</strong><br>
+                                            {lat:.6f}, {lon:.6f}</p>
+                                        """
+                                        
+                                        if gps_data["Parsed Data"].get('Altitude'):
+                                            popup_html += f'<p style="margin: 5px 0;"><strong>⛰️ Altitude:</strong> {gps_data["Parsed Data"]["Altitude"]:.1f}m</p>'
+                                        if gps_data["Parsed Data"].get('Date'):
+                                            popup_html += f'<p style="margin: 5px 0;"><strong>📅 Date:</strong> {gps_data["Parsed Data"]["Date"]}</p>'
+                                        if gps_data["Parsed Data"].get('Time'):
+                                            popup_html += f'<p style="margin: 5px 0;"><strong>⏰ Time:</strong> {gps_data["Parsed Data"]["Time"]}</p>'
+                                        
+                                        popup_html += "</div>"
+                                        
+                                        # Custom marker icon
+                                        folium.Marker(
+                                            [lat, lon], 
+                                            tooltip="📍 Click for image details",
+                                            popup=folium.Popup(popup_html, max_width=300),
+                                            icon=folium.Icon(color='red', icon='camera', prefix='fa')
+                                        ).add_to(map_)
+                                        
+                                        # Add a circle to show precision
+                                        folium.Circle(
+                                            [lat, lon],
+                                            radius=50,
+                                            popup="Approximate GPS accuracy area",
+                                            color='blue',
+                                            fill=True,
+                                            opacity=0.3
+                                        ).add_to(map_)
+                                        
+                                        st_folium(map_, width=700, height=450)
+                                    
+                                    # Show all EXIF data if requested
+                                    if show_all_exif and all_exif:
+                                        st.markdown("### 📋 Complete EXIF Metadata")
+                                        
+                                        # Camera info highlights
+                                        camera_info = {}
+                                        important_tags = ['Make', 'Model', 'DateTime', 'Software', 'Flash', 'FocalLength', 'ExposureTime', 'FNumber', 'ISO']
+                                        
+                                        
+                                        
+                                        for tag in important_tags:
+                                            if tag in all_exif:
+                                                camera_info[tag] = all_exif[tag]
+                                        
+                                        if camera_info:
+                                            st.markdown("#### 📸 Camera Information")
+                                            camera_cols = st.columns(len(camera_info))
+                                            for i, (key, value) in enumerate(camera_info.items()):
+                                                with camera_cols[i % len(camera_cols)]:
+                                                    st.markdown(f"**{key}**\n\n{value}")
+
+                                        
+                                        # All EXIF data table
+                                        st.markdown("#### 📊 All Metadata")
+                                        df = pd.DataFrame(list(all_exif.items()), columns=['Tag', 'Value'])
+                                        st.dataframe(
+                                            df, 
+                                            use_container_width=True,
+                                            height=300
+                                        )
+                                    
+                                    # Enhanced export section
+                                    if gps_data:
+                                        st.markdown("### 💾 Export & Download")
+                                        
+                                        col_export1, col_export2 = st.columns(2)
+                                        
+                                        with col_export1:
+                                            export_json = export_data(gps_data, all_exif, uploaded_file.name)
+                                            st.download_button(
+                                                label="📥 Download JSON Data",
+                                                data=export_json,
+                                                file_name=f"{uploaded_file.name}_geolocation.json",
+                                                mime="application/json",
+                                                help="Download all extracted GPS and EXIF data in JSON format"
+                                            )
+                                        
+                                        with col_export2:
+                                            # Create CSV for coordinates
+                                            csv_data = f"filename,latitude,longitude,altitude,date,time\n"
+                                            csv_data += f"{uploaded_file.name},{lat},{lon},"
+                                            csv_data += f"{parsed_data.get('Altitude', '')},"
+                                            csv_data += f"{parsed_data.get('Date', '')},"
+                                            csv_data += f"{parsed_data.get('Time', '')}"
+                                            
+                                            st.download_button(
+                                                label="📄 Download CSV Data",
+                                                data=csv_data,
+                                                file_name=f"{uploaded_file.name}_coordinates.csv",
+                                                mime="text/csv",
+                                                help="Download GPS coordinates in CSV format"
+                                            )
+                                
+                                except Exception as e:
+                                    st.error(f"❌ Could not process {uploaded_file.name}: {e}")
+                        
+                        # Clear progress bar when done
+                        progress_bar.empty()
+                        status_text.empty()
+                        
+                        # Summary section
+                        if len(uploaded_files) > 1:
+                            st.markdown("---")
+                            st.markdown("### 📊 Processing Summary")
+                            
+                            summary_col1, summary_col2, summary_col3 = st.columns(3)
+                            with summary_col1:
+                                st.metric("Total Images", len(uploaded_files))
+                            with summary_col2:
+                                st.metric("Images with GPS", st.session_state.images_with_gps)
+                            with summary_col3:
+                                success_rate = (st.session_state.images_with_gps / len(uploaded_files)) * 100
+                                st.metric("Success Rate", f"{success_rate:.1f}%")
+
+                    # Enhanced information section
+                    with st.expander("ℹ️ About GPS EXIF Data & Privacy", expanded=False):
+                        st.markdown("""
+                        ### 🛰️ What is GPS EXIF Data?
+                        
+                        **EXIF (Exchangeable Image File Format)** metadata can include precise GPS coordinates and other location information:
+                        - 📍 **Latitude & Longitude**: Exact geographic coordinates
+                        - ⛰️ **Altitude**: Elevation above sea level
+                        - ⏰ **Timestamp**: When and where the photo was taken
+                        - 🛰️ **GPS Method**: How the location was determined (GPS, Network, etc.)
+                        
+                        ### 📱 Common Sources
+                        - Smartphones with location services enabled
+                        - Digital cameras with built-in GPS
+                        - Images edited with location-aware software
+                        
+                        ### 🔒 Privacy & Security Considerations
+                        
+                        ⚠️ **Important Privacy Notes:**
+                        - GPS data can reveal sensitive location information
+                        - Photos shared online may expose your home, workplace, or travel patterns
+                        - Consider the privacy implications before sharing images with embedded GPS data
+                        - Many social media platforms automatically strip EXIF data, but not all do
+                        
+                        ### 🛡️ How to Protect Your Privacy
+                        - Turn off location services for camera apps when privacy is important
+                        - Use EXIF removal tools before sharing photos online
+                        - Check your device's privacy settings regularly
+                        - Be especially careful with photos of children or private locations
+                        
+                        ### 📋 Supported Features
+                        - ✅ JPEG files with embedded GPS EXIF data
+                        - ✅ Multiple coordinate format displays
+                        - ✅ Interactive map visualization
+                        - ✅ Batch processing of multiple images
+                        - ✅ Export to JSON and CSV formats
+                        - ✅ Comprehensive metadata analysis
+                        """)
+
+                    # Footer
+                    st.markdown("---")
+                    st.markdown("""
+                    <div style="text-align: center; color: #666; padding: 1rem;">
+                        <p>🔧 Built with Streamlit • 🗺️ Maps by OpenStreetMap • 📊 Data visualization enhanced</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 elif page1 == "Thumbnail Analysis":
                     st.title("Compression History")
