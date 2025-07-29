@@ -292,6 +292,9 @@ def remove_metadata(image_bytes, remove_options):
     except Exception as e:
         raise Exception(f"Error removing metadata: {str(e)}")
 
+def to_rational(value, precision=100):
+    return (int(value * precision), precision)
+
 def edit_metadata(image_bytes, edit_data):
     """Edit metadata in image"""
     try:
@@ -310,6 +313,34 @@ def edit_metadata(image_bytes, edit_data):
         changes_made = []
         
         # Edit basic camera info
+        if edit_data.get('ImageWidth'):
+            exif_dict["0th"][piexif.ImageIFD.ImageWidth] = int(edit_data['ImageWidth'])
+            changes_made.append("ImageWidth")
+
+        if edit_data.get('ImageLength'):
+            exif_dict["0th"][piexif.ImageIFD.ImageLength] = int(edit_data['ImageLength'])
+            changes_made.append("ImageLength")
+
+        if edit_data.get('Orientation'):
+            exif_dict["0th"][piexif.ImageIFD.Orientation] = int(edit_data['Orientation'])
+            changes_made.append("Orientation")
+
+        if edit_data.get('YCbCrPositioning'):
+            exif_dict["0th"][piexif.ImageIFD.YCbCrPositioning] = int(edit_data['YCbCrPositioning'])
+            changes_made.append("YCbCrPositioning")
+
+        if edit_data.get('XResolution'):
+            exif_dict["0th"][piexif.ImageIFD.XResolution] = to_rational(edit_data['XResolution'])
+            changes_made.append("XResolution")
+
+        if edit_data.get('YResolution'):
+            exif_dict["0th"][piexif.ImageIFD.YResolution] = to_rational(edit_data['YResolution'])
+            changes_made.append("YResolution")
+
+        if edit_data.get('ResolutionUnit'):
+            exif_dict["0th"][piexif.ImageIFD.ResolutionUnit] = int(edit_data['ResolutionUnit'])
+            changes_made.append("ResolutionUnit")
+
         if edit_data.get('camera_make'):
             exif_dict["0th"][piexif.ImageIFD.Make] = edit_data['camera_make']
             changes_made.append("Camera Make")
@@ -337,6 +368,23 @@ def edit_metadata(image_bytes, edit_data):
             exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = datetime_str
             exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = datetime_str
             changes_made.append("Timestamps")
+
+        if edit_data.get('SubsecTime'):
+            exif_dict["Exif"][piexif.ExifIFD.SubSecTime] = str(edit_data['SubsecTime'])
+            changes_made.append("SubsecTime")
+
+        if edit_data.get('SubsecTimeOriginal'):
+            exif_dict["Exif"][piexif.ExifIFD.SubSecTimeOriginal] = str(edit_data['SubsecTimeOriginal'])
+            changes_made.append("SubsecTimeOriginal")
+
+        if edit_data.get('SubsecTimeDigitized'):
+            exif_dict["Exif"][piexif.ExifIFD.SubSecTimeDigitized] = str(edit_data['SubsecTimeDigitized'])
+            changes_made.append("SubsecTimeDigitized")
+
+        if edit_data.get('SensingMethod'):
+            exif_dict["Exif"][piexif.ExifIFD.SensingMethod] = int(edit_data['SensingMethod'])
+            changes_made.append("SensingMethod")
+        
         
         # Edit camera settings
         if edit_data.get('iso'):
@@ -354,6 +402,38 @@ def edit_metadata(image_bytes, edit_data):
             f_num = float(edit_data['aperture'])
             exif_dict["Exif"][piexif.ExifIFD.FNumber] = (int(f_num * 10), 10)
             changes_made.append("Aperture")
+
+        if edit_data.get('ExposureTime'):
+            exif_dict["Exif"][piexif.ExifIFD.ExposureTime] = to_rational(edit_data['ExposureTime'])
+            changes_made.append("ExposureTime")
+
+        if edit_data.get('ShutterSpeedValue'):
+            exif_dict["Exif"][piexif.ExifIFD.ShutterSpeedValue] = to_rational(edit_data['ShutterSpeedValue'])
+            changes_made.append("ShutterSpeedValue")
+
+        if edit_data.get('BrightnessValue'):
+            exif_dict["Exif"][piexif.ExifIFD.BrightnessValue] = to_rational(edit_data['BrightnessValue'])
+            changes_made.append("BrightnessValue")
+
+        if edit_data.get('ExposureBiasValue'):
+            exif_dict["Exif"][piexif.ExifIFD.ExposureBiasValue] = to_rational(edit_data['ExposureBiasValue'])
+            changes_made.append("ExposureBiasValue")
+
+        if edit_data.get('MaxApertureValue'):
+            exif_dict["Exif"][piexif.ExifIFD.MaxApertureValue] = to_rational(edit_data['MaxApertureValue'])
+            changes_made.append("MaxApertureValue")
+
+        if edit_data.get('MeteringMode'):
+            exif_dict["Exif"][piexif.ExifIFD.MeteringMode] = int(edit_data['MeteringMode'])
+            changes_made.append("MeteringMode")
+
+        if edit_data.get('LightSource'):
+            exif_dict["Exif"][piexif.ExifIFD.LightSource] = int(edit_data['LightSource'])
+            changes_made.append("LightSource")
+
+        if edit_data.get('Flash'):
+            exif_dict["Exif"][piexif.ExifIFD.Flash] = int(edit_data['Flash'])
+            changes_made.append("Flash")
         
         # Edit GPS data
         if edit_data.get('gps_lat') and edit_data.get('gps_lon'):
@@ -378,6 +458,63 @@ def edit_metadata(image_bytes, edit_data):
         if edit_data.get('comment'):
             exif_dict["0th"][piexif.ImageIFD.ImageDescription] = edit_data['comment']
             changes_made.append("Image Description")
+
+        if edit_data.get('ColorSpace'):
+            exif_dict["Exif"][piexif.ExifIFD.ColorSpace] = int(edit_data['ColorSpace'])
+            changes_made.append("ColorSpace")
+
+        if edit_data.get('ExifImageWidth'):
+            exif_dict["Exif"][piexif.ExifIFD.PixelXDimension] = int(edit_data['ExifImageWidth'])
+            changes_made.append("ExifImageWidth")
+
+        if edit_data.get('ExifImageHeight'):
+            exif_dict["Exif"][piexif.ExifIFD.PixelYDimension] = int(edit_data['ExifImageHeight'])
+            changes_made.append("ExifImageHeight")
+
+        if edit_data.get('ExposureProgram'):
+            exif_dict["Exif"][piexif.ExifIFD.ExposureProgram] = int(edit_data['ExposureProgram'])
+            changes_made.append("ExposureProgram")
+
+        if edit_data.get('ExposureMode'):
+            exif_dict["Exif"][piexif.ExifIFD.ExposureMode] = int(edit_data['ExposureMode'])
+            changes_made.append("ExposureMode")
+
+        if edit_data.get('WhiteBalance'):
+            exif_dict["Exif"][piexif.ExifIFD.WhiteBalance] = int(edit_data['WhiteBalance'])
+            changes_made.append("WhiteBalance")
+
+        if edit_data.get('DigitalZoomRatio'):
+            exif_dict["Exif"][piexif.ExifIFD.DigitalZoomRatio] = to_rational(edit_data['DigitalZoomRatio'])
+            changes_made.append("DigitalZoomRatio")
+
+        if edit_data.get('FocalLengthIn35mmFilm'):
+            exif_dict["Exif"][piexif.ExifIFD.FocalLengthIn35mmFilm] = int(edit_data['FocalLengthIn35mmFilm'])
+            changes_made.append("FocalLengthIn35mmFilm")
+
+        if edit_data.get('SceneCaptureType'):
+            exif_dict["Exif"][piexif.ExifIFD.SceneCaptureType] = int(edit_data['SceneCaptureType'])
+            changes_made.append("SceneCaptureType")
+
+        if edit_data.get('SensitivityType'):
+            exif_dict["Exif"][piexif.ExifIFD.SensitivityType] = int(edit_data['SensitivityType'])
+            changes_made.append("SensitivityType")
+
+        if edit_data.get('RecommendedExposureIndex'):
+            exif_dict["Exif"][piexif.ExifIFD.RecommendedExposureIndex] = int(edit_data['RecommendedExposureIndex'])
+            changes_made.append("RecommendedExposureIndex")
+
+        if edit_data.get('FlashpixVersion'):
+            exif_dict["Exif"][piexif.ExifIFD.FlashpixVersion] = bytes(edit_data['FlashpixVersion'], 'utf-8')
+            changes_made.append("FlashpixVersion")
+
+        if edit_data.get('ComponentsConfiguration'):
+            exif_dict["Exif"][piexif.ExifIFD.ComponentsConfiguration] = bytes(edit_data['ComponentsConfiguration'], 'utf-8')
+            changes_made.append("ComponentsConfiguration")
+
+        if edit_data.get('ExifVersion'):
+            exif_dict["Exif"][piexif.ExifIFD.ExifVersion] = bytes(edit_data['ExifVersion'], 'utf-8')
+            changes_made.append("ExifVersion")
+
         
         # Save with modified EXIF
         exif_bytes = piexif.dump(exif_dict)
@@ -402,6 +539,13 @@ def create_metadata_editor_ui(uploaded_file, file_bytes):
         
         with col1:
             st.markdown("**Basic Information**")
+            ImageWidth = st.number_input("Image Width", min_value=0, value=0, step=1)
+            ImageLength = st.number_input("Image Length", min_value=0, value=0, step=1)
+            Orientation = st.selectbox("Orientation", [1, 3, 6, 8], index=0, help="1=Normal, 3=Upside down, 6=Rotate CW, 8=Rotate CCW")
+            YCbCrPositioning = st.selectbox("YCbCr Positioning", [1, 2], index=0, help="1=Center, 2=Co-sited")
+            XResolution = st.number_input("X Resolution", min_value=1.0, value=72.0, step=1.0)
+            YResolution = st.number_input("Y Resolution", min_value=1.0, value=72.0, step=1.0)
+            ResolutionUnit = st.selectbox("Resolution Unit", [1, 2, 3], index=1, format_func=lambda x: {1: "None", 2: "Inch", 3: "Centimeter"}[x])
             camera_make = st.text_input("Camera Make", placeholder="e.g., Canon")
             camera_model = st.text_input("Camera Model", placeholder="e.g., EOS R5")
             software = st.text_input("Software", placeholder="e.g., Adobe Lightroom")
@@ -412,11 +556,39 @@ def create_metadata_editor_ui(uploaded_file, file_bytes):
             iso = st.number_input("ISO", min_value=50, max_value=102400, value=100, step=50)
             focal_length = st.number_input("Focal Length (mm)", min_value=1.0, max_value=800.0, value=50.0, step=0.1)
             aperture = st.number_input("Aperture (f-number)", min_value=1.0, max_value=32.0, value=2.8, step=0.1)
+            FocalLengthIn35mmFilm = st.number_input("Focal Length in 35mm Film", min_value=0, value=50)
+            ExposureTime = st.number_input("Exposure Time (seconds)", min_value=0.0001, value=1.0, step=0.1)
+            ShutterSpeedValue = st.number_input("Shutter Speed Value (APEX)", value=1.0, step=0.1)
+            BrightnessValue = st.number_input("Brightness Value", value=0.0, step=0.1)
+            ExposureBiasValue = st.number_input("Exposure Bias Value", value=0.0, step=0.1)
+            MaxApertureValue = st.number_input("Max Aperture Value", value=2.8, step=0.1)
+            MeteringMode = st.selectbox("Metering Mode", [0, 1, 2, 3, 4, 5, 6, 255], index=1,
+                format_func=lambda x: {
+                    0: "Unknown", 1: "Average", 2: "Center-weighted average", 3: "Spot",
+                    4: "Multi-spot", 5: "Pattern", 6: "Partial", 255: "Other"
+                }[x]
+            )
+            LightSource = st.selectbox("Light Source", [0, 1, 2, 3, 4, 9, 10, 11, 12, 17, 255], index=0,
+                format_func=lambda x: {
+                    0: "Unknown", 1: "Daylight", 2: "Fluorescent", 3: "Tungsten",
+                    4: "Flash", 9: "Fine weather", 10: "Cloudy", 11: "Shade",
+                    12: "Daylight fluorescent", 17: "Standard light A", 255: "Other"
+                }[x]
+            )
+            Flash = st.selectbox("Flash", [0, 1, 5, 7, 9, 16, 24, 25, 29, 31, 32, 65, 93, 95],
+                index=0, format_func=lambda x: f"Flash code {x}"
+            )
         
         with col2:
             st.markdown("**Date & Time**")
             date_edit = st.date_input("Photo Date", value=datetime.now().date())
             time_edit = st.time_input("Photo Time", value=datetime.now().time())
+            SubsecTime = st.text_input("Subsec Time", placeholder="e.g., 123")
+            SubsecTimeOriginal = st.text_input("Subsec Time Original", placeholder="e.g., 456")
+            SubsecTimeDigitized = st.text_input("Subsec Time Digitized", placeholder="e.g., 789")
+            SensingMethod = st.selectbox("Sensing Method", [1, 2, 3, 4, 5, 7, 8], index=0,
+                format_func=lambda x: f"Method {x}"
+            )
             
             st.markdown("**GPS Location**")
             gps_lat = st.number_input("Latitude", value=0.0, format="%.6f", help="Positive for North, negative for South")
@@ -424,6 +596,35 @@ def create_metadata_editor_ui(uploaded_file, file_bytes):
             
             st.markdown("**Additional Info**")
             comment = st.text_area("Image Description/Comment", placeholder="Description of the image")
+            ColorSpace = st.selectbox("Color Space", [1, 65535], index=0,
+                format_func=lambda x: "sRGB" if x == 1 else "Uncalibrated"
+            )
+            ExifImageWidth = st.number_input("Exif Image Width", min_value=0, value=3000)
+            ExifImageHeight = st.number_input("Exif Image Height", min_value=0, value=2000)
+            ExposureProgram = st.selectbox("Exposure Program", list(range(0, 9)), index=0,
+                format_func=lambda x: [
+                    "Not defined", "Manual", "Program", "Aperture priority",
+                    "Shutter priority", "Creative", "Action", "Portrait", "Landscape"
+                ][x]
+            )
+            ExposureMode = st.selectbox("Exposure Mode", [0, 1, 2], index=0,
+                format_func=lambda x: ["Auto", "Manual", "Auto bracket"][x]
+            )
+            WhiteBalance = st.selectbox("White Balance", [0, 1], index=0,
+                format_func=lambda x: "Auto" if x == 0 else "Manual"
+            )
+            DigitalZoomRatio = st.number_input("Digital Zoom Ratio", min_value=1.0, value=1.0, step=0.1)
+            SceneCaptureType = st.selectbox("Scene Capture Type", [0, 1, 2, 3, 4], index=0,
+                format_func=lambda x: ["Standard", "Landscape", "Portrait", "Night Scene", "Other"][x]
+            )
+            SensitivityType = st.selectbox("Sensitivity Type", [0, 1, 2, 3, 4, 5, 6, 7], index=0,
+                format_func=lambda x: f"Type {x}"
+            )
+            RecommendedExposureIndex = st.number_input("Recommended Exposure Index", min_value=1, value=100, step=1)
+
+            FlashpixVersion = st.text_input("Flashpix Version (bytes)", placeholder="e.g., 0100")
+            ComponentsConfiguration = st.text_input("Components Configuration (bytes)", placeholder="e.g., 1234")
+            ExifVersion = st.text_input("Exif Version (bytes)", placeholder="e.g., 0221")
         
         if st.button("💾 Apply Changes", type="primary"):
             try:
@@ -431,6 +632,14 @@ def create_metadata_editor_ui(uploaded_file, file_bytes):
                 datetime_combined = datetime.combine(date_edit, time_edit)
                 
                 edit_data = {
+                    # 0th IFD tags (camera and general image info)
+                    'ImageWidth': ImageWidth if ImageWidth else None,
+                    'ImageLength': ImageLength if ImageLength else None,
+                    'Orientation': Orientation if Orientation else None,
+                    'YCbCrPositioning': YCbCrPositioning if YCbCrPositioning else None,
+                    'XResolution': XResolution if XResolution else None,
+                    'YResolution': YResolution if YResolution else None,
+                    'ResolutionUnit': ResolutionUnit if ResolutionUnit else None,
                     'camera_make': camera_make if camera_make else None,
                     'camera_model': camera_model if camera_model else None,
                     'software': software if software else None,
@@ -440,9 +649,35 @@ def create_metadata_editor_ui(uploaded_file, file_bytes):
                     'iso': iso,
                     'focal_length': focal_length,
                     'aperture': aperture,
+                    'ExposureTime': ExposureTime if ExposureTime else None,
+                    'ShutterSpeedValue': ShutterSpeedValue if ShutterSpeedValue else None,
+                    'BrightnessValue': BrightnessValue if BrightnessValue else None,
+                    'ExposureBiasValue': ExposureBiasValue if ExposureBiasValue else None,
+                    'MaxApertureValue': MaxApertureValue if MaxApertureValue else None,
+                    'MeteringMode': MeteringMode if MeteringMode else None,
+                    'LightSource': LightSource if LightSource else None,
+                    'Flash': Flash if Flash else None,
+                    'SubsecTime': SubsecTime if SubsecTime else None,
+                    'SubsecTimeOriginal': SubsecTimeOriginal if SubsecTimeOriginal else None,
+                    'SubsecTimeDigitized': SubsecTimeDigitized if SubsecTimeDigitized else None,
+                    'SensingMethod': SensingMethod if SensingMethod else None,
                     'gps_lat': gps_lat if gps_lat != 0.0 else None,
                     'gps_lon': gps_lon if gps_lon != 0.0 else None,
-                    'comment': comment if comment else None
+                    'comment': comment if comment else None,
+                    'ColorSpace': ColorSpace if ColorSpace else None,
+                    'ExifImageWidth': ExifImageWidth if ExifImageWidth else None,
+                    'ExifImageHeight': ExifImageHeight if ExifImageHeight else None,
+                    'ExposureProgram': ExposureProgram if ExposureProgram else None,
+                    'ExposureMode': ExposureMode if ExposureMode else None,
+                    'WhiteBalance': WhiteBalance if WhiteBalance else None,
+                    'DigitalZoomRatio': DigitalZoomRatio if DigitalZoomRatio else None,
+                    'FocalLengthIn35mmFilm': FocalLengthIn35mmFilm if FocalLengthIn35mmFilm else None,
+                    'SceneCaptureType': SceneCaptureType if SceneCaptureType else None,
+                    'SensitivityType': SensitivityType if SensitivityType else None,
+                    'RecommendedExposureIndex': RecommendedExposureIndex if RecommendedExposureIndex else None,
+                    'FlashpixVersion': FlashpixVersion if FlashpixVersion else None,
+                    'ComponentsConfiguration': ComponentsConfiguration if ComponentsConfiguration else None,
+                    'ExifVersion': ExifVersion if ExifVersion else None
                 }
                 
                 modified_bytes, changes = edit_metadata(file_bytes, edit_data)
