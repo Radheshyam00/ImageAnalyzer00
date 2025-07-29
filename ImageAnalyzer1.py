@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import cv2
-from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ExifTags
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageStat
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -32,10 +32,12 @@ from collections import defaultdict
 import matplotlib.patches as patches
 from scipy import ndimage
 from scipy.stats import entropy, skew, kurtosis, pearsonr
+from scipy.stats import entropy as scipy_entropy
 from skimage.metrics import structural_similarity as ssim
 from sklearn.cluster import KMeans
 from skimage import metrics, feature, filters
-from scipy import ndimage
+from skimage import metrics as sk_metrics
+
 
 load_dotenv()
 
@@ -1041,22 +1043,28 @@ def main():
             # st.markdown("Upload an image to extract comprehensive metadata, EXIF data, and check for malware using VirusTotal.")
             
             # VirusTotal API Key input
-            st.sidebar.header("🔐 VirusTotal Configuration")
-            api_key = st.sidebar.text_input(
-                "VirusTotal API Key",
-                type="password",
-                help="Enter your VirusTotal API key to enable malware scanning. Get a free key at virustotal.com"
-            )
+            with st.sidebar:
+                st.markdown("---")
+                with st.expander("🔐 VirusTotal Configuration", expanded=False):
             
-            if api_key:
-                st.sidebar.success("✅ API Key configured")
-            else:
-                st.sidebar.warning("⚠️ No API key - malware scanning disabled")
-            
-            st.sidebar.markdown("---")
-            st.sidebar.markdown("**Note:** VirusTotal has rate limits:")
-            st.sidebar.markdown("- Free tier: 4 requests/minute")
-            st.sidebar.markdown("- Premium: Higher limits")
+                    # st.header("🔐 VirusTotal Configuration")
+                    api_key = st.text_input(
+                        "VirusTotal API Key",
+                        type="password",
+                        help="Enter your VirusTotal API key to enable malware scanning. Get a free key at virustotal.com"
+                    )
+                    
+                    if api_key:
+                        st.success("✅ API Key configured")
+                    else:
+                        st.warning("⚠️ No API key - malware scanning disabled")
+                    
+                    st.markdown("---")
+                    st.markdown("**Note:** VirusTotal has rate limits:")
+                    st.markdown("- Free tier: 4 requests/minute")
+                    st.markdown("- Premium: Higher limits")
+                st.markdown("---")
+           
             
             uploaded_file = st.file_uploader(
                 "Choose an image file",
@@ -1270,17 +1278,6 @@ def main():
     elif page == "⚙️ Reverse Image Analyzer":
         st.title("Product Analysis Tool")
     elif page == "File Inspector Pro":
-        # Configure page
-        # st.title("File Inspector Pro")
-        # st.set_page_config(
-        #     page_title="File Inspector Pro",
-        #     page_icon="🔍",
-        #     layout="wide",
-        #     initial_sidebar_state="expanded"
-        # )
-
-        # MongoDB Configuration
-        
         MONGO_URI = os.getenv("MONGO_URI")
 
         @st.cache_resource
@@ -1578,31 +1575,33 @@ def main():
 
         # Sidebar configuration
         with st.sidebar:
-            st.header("⚙️ Settings")
-            
-            min_string_length = st.slider("Minimum string length", 1, 20, 4)
-            max_string_length = st.slider("Maximum string length", 10, 500, 100)
-            bytes_per_line = st.selectbox("Hex bytes per line", [8, 16, 32], index=1)
-            
-            st.header("📊 Analysis Options")
-            show_hashes = st.checkbox("Show file hashes", True)
-            show_hex = st.checkbox("Show hex view", True)
-            show_strings = st.checkbox("Show extracted strings", True)
-            show_stats = st.checkbox("Show byte statistics", True)
-            save_to_db = st.checkbox("Save analysis to database", True, disabled=(db is None))
-            
+            st.sidebar.markdown("---")
+            with st.expander("⚙️ Settings", expanded=False):
+                st.header("📊 Analysis Options")
+                show_hashes = st.checkbox("Show file hashes", True)
+                show_hex = st.checkbox("Show hex view", True)
+                show_strings = st.checkbox("Show extracted strings", True)
+                show_stats = st.checkbox("Show byte statistics", True)
+                save_to_db = st.checkbox("Save analysis to database", True, disabled=(db is None))
+                
+                min_string_length = st.slider("Minimum string length", 1, 20, 4)
+                max_string_length = st.slider("Maximum string length", 10, 500, 100)
+                bytes_per_line = st.selectbox("Hex bytes per line", [8, 16, 32], index=1)
+                
             # Database Statistics
-            if db is not None:
-                st.header("📈 Database Stats")
-                db_stats = get_db_stats()
-                if db_stats:
-                    st.metric("Total Files", db_stats['total_files'])
-                    st.metric("This Week", db_stats['recent_files'])
-                    
-                    if db_stats['file_types']:
-                        st.write("**Top File Types:**")
-                        for ft in db_stats['file_types']:
-                            st.write(f"• {ft['_id']}: {ft['count']}")
+            with st.expander("📈 Database Stats", expanded=False):
+                if db is not None:
+                    st.header("📈 Database Stats")
+                    db_stats = get_db_stats()
+                    if db_stats:
+                        st.metric("Total Files", db_stats['total_files'])
+                        st.metric("This Week", db_stats['recent_files'])
+                        
+                        if db_stats['file_types']:
+                            st.write("**Top File Types:**")
+                            for ft in db_stats['file_types']:
+                                st.write(f"• {ft['_id']}: {ft['count']}")
+            st.sidebar.markdown("---")
 
         # Create main tabs
         tab_main, tab_history, tab_search = st.tabs(["🔍 Analysis", "📚 History", "🔎 Search"])
@@ -2084,13 +2083,18 @@ def main():
             }
         </style>
         """, unsafe_allow_html=True)
-        # st.header("⚙️ Analysis Settings")          
-        analysis_mode = st.sidebar.selectbox(
-                        "Analysis Mode",
-                        ["Quick Scan", "Expert Mode"],
-                        help="Choose analysis depth"
-                    )
+        # st.header("⚙️ Analysis Settings")
+        with st.sidebar:
+            st.sidebar.markdown("---") 
+            # with st.expander("Analysis Mode", expanded=False):        
+            analysis_mode = st.selectbox(
+                                    "Analysis Mode",
+                                    ["Quick Scan", "Expert Mode"],
+                                    help="Choose analysis depth"
+                                )
+                    
         
+        st.sidebar.markdown("---")
         if analysis_mode == "Quick Scan":
             # Enhanced quantization table patterns
             KNOWN_QTABLES = {
@@ -2322,18 +2326,17 @@ def main():
                 # st.markdown("### Professional-grade image authentication and tampering detection")
                 
                 # Sidebar for settings
-                with st.sidebar:
-                    
-                    show_confidence = st.checkbox("Show Confidence Scores", True)
-                    generate_report = st.checkbox("Generate Report", False)
-                    
-                    st.markdown("---")
-                    st.markdown("### 📊 Analysis Coverage")
-                    st.markdown("- Error Level Analysis (ELA)")
-                    st.markdown("- JPEG Artifact Analysis")
-                    st.markdown("- Metadata Forensics")
-                    st.markdown("- Quantization Table Analysis")
-                    st.markdown("- Geometric Analysis")
+                show_confidence = st.sidebar.checkbox("Show Confidence Scores", True)
+                generate_report = st.sidebar.checkbox("Generate Report", False)
+                st.sidebar.markdown("---") 
+
+                
+                    # st.markdown("### 📊 Analysis Coverage")
+                    # st.markdown("- Error Level Analysis (ELA)")
+                    # st.markdown("- JPEG Artifact Analysis")
+                    # st.markdown("- Metadata Forensics")
+                    # st.markdown("- Quantization Table Analysis")
+                    # st.markdown("- Geometric Analysis")
                 
                 # File upload
                 uploaded_file = st.file_uploader(
@@ -2774,28 +2777,32 @@ def main():
                     """)
 
                     # Sidebar for advanced options
-                    with st.sidebar:
-                        st.header("🛠️ Analysis Options")
+                    # with st.sidebar:
+                        # st.header("🛠️ Analysis Options")
                         
                         # File upload
-                        uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png", "bmp", "tiff"])
+                    uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png", "bmp", "tiff"])
                         
-                        if uploaded_file:
-                            st.subheader("ELA Parameters")
-                            quality = st.slider("Compression Quality", min_value=50, max_value=100, value=90, 
-                                            help="Lower values enhance differences")
-                            
-                            enhance_factor = st.slider("Brightness Enhancement", min_value=1, max_value=50, value=20,
-                                                    help="Higher values make differences more visible")
-                            
-                            st.subheader("Additional Analysis")
-                            show_histogram = st.checkbox("Show ELA Histogram", value=True)
-                            show_heatmap = st.checkbox("Show Intensity Heatmap", value=False)
-                            apply_blur = st.checkbox("Apply Gaussian Blur to ELA", value=False)
-                            
-                            if apply_blur:
-                                blur_radius = st.slider("Blur Radius", min_value=0.5, max_value=3.0, value=1.0, step=0.5)
+                    if uploaded_file:
+                        with st.sidebar:
+                            st.markdown("---")
+                            with st.expander("ELA Parameters", expanded=False):
+                                # st.subheader("ELA Parameters")
+                                quality = st.slider("Compression Quality", min_value=50, max_value=100, value=90, 
+                                                help="Lower values enhance differences")
+                                    
+                                enhance_factor = st.slider("Brightness Enhancement", min_value=1, max_value=50, value=20,
+                                                        help="Higher values make differences more visible")
 
+                            with st.expander("Additional Analysis", expanded=False):        
+                                # st.subheader("Additional Analysis")
+                                show_histogram = st.checkbox("Show ELA Histogram", value=True)
+                                show_heatmap = st.checkbox("Show Intensity Heatmap", value=False)
+                                apply_blur = st.checkbox("Apply Gaussian Blur to ELA", value=False)
+                                    
+                                if apply_blur:
+                                    blur_radius = st.slider("Blur Radius", min_value=0.5, max_value=3.0, value=1.0, step=0.5)
+                            st.markdown("---")
                     def calculate_ela_stats(ela_image):
                         """Calculate statistics for ELA image"""
                         # Convert to grayscale for analysis
@@ -3030,7 +3037,7 @@ def main():
                     st.markdown("Upload an image and apply advanced edge detection techniques using OpenCV.")
 
                     # Sidebar for controls
-                    st.sidebar.title("⚙️ Edge Detection Parameters")
+                    # st.sidebar.title("⚙️ Edge Detection Parameters")
 
                     uploaded_file = st.file_uploader("📤 Upload an Image", type=["jpg", "jpeg", "png"])
 
@@ -3051,50 +3058,60 @@ def main():
                             st.write(f"Data type: {img_array.dtype}")
 
                         # Preprocessing options
-                        st.sidebar.markdown("### 🔧 Preprocessing")
-                        use_gray = st.sidebar.checkbox("Convert to Grayscale", True)
-                        apply_blur = st.sidebar.checkbox("Apply Gaussian Blur", True)
-                        blur_ksize = st.sidebar.slider("Blur Kernel Size", 1, 15, 5, step=2)
-                        
-                        # Additional preprocessing
-                        apply_morphology = st.sidebar.checkbox("Apply Morphological Operations", False)
-                        if apply_morphology:
-                            morph_operation = st.sidebar.selectbox(
-                                "Morphological Operation", 
-                                ["Opening", "Closing", "Gradient", "Tophat", "Blackhat"]
-                            )
-                            morph_kernel_size = st.sidebar.slider("Morphology Kernel Size", 3, 15, 5, step=2)
+                        with st.sidebar:
+                            st.markdown("---")
+                            st.title("Edge Detection Parameters")
+                            with st.expander("Preprocessing", expanded=False):
+                                # st.markdown("### 🔧 Preprocessing")
+                                use_gray = st.checkbox("Convert to Grayscale", True)
+                                apply_blur = st.checkbox("Apply Gaussian Blur", True)
+                                blur_ksize = st.slider("Blur Kernel Size", 1, 15, 5, step=2)
+                                
+                                # Additional preprocessing
+                                apply_morphology = st.checkbox("Apply Morphological Operations", False)
+                                if apply_morphology:
+                                    morph_operation = st.selectbox(
+                                        "Morphological Operation", 
+                                        ["Opening", "Closing", "Gradient", "Tophat", "Blackhat"]
+                                    )
+                                    morph_kernel_size = st.slider("Morphology Kernel Size", 3, 15, 5, step=2)
 
-                        # Canny Edge Detection
-                        st.sidebar.markdown("### 🧱 Canny Edge Detection")
-                        canny_min = st.sidebar.slider("Canny Min Threshold", 0, 255, 50)
-                        canny_max = st.sidebar.slider("Canny Max Threshold", 0, 255, 150)
-                        canny_aperture = st.sidebar.selectbox("Canny Aperture Size", [3, 5, 7], index=0)
-                        canny_l2gradient = st.sidebar.checkbox("Use L2 Gradient", False)
+                            with st.expander("Canny Edge Detection", expanded=False):
+                                # Canny Edge Detection
+                                # st.sidebar.markdown("### 🧱 Canny Edge Detection")
+                                canny_min = st.slider("Canny Min Threshold", 0, 255, 50)
+                                canny_max = st.slider("Canny Max Threshold", 0, 255, 150)
+                                canny_aperture = st.selectbox("Canny Aperture Size", [3, 5, 7], index=0)
+                                canny_l2gradient = st.checkbox("Use L2 Gradient", False)
 
-                        # Sobel
-                        st.sidebar.markdown("### 🧭 Sobel Edge Detection")
-                        sobel_ksize = st.sidebar.slider("Sobel Kernel Size", 1, 31, 3, step=2)
-                        sobel_scale = st.sidebar.slider("Sobel Scale", 0.1, 5.0, 1.0, step=0.1)
-                        sobel_delta = st.sidebar.slider("Sobel Delta", 0, 50, 0)
+                            with st.expander("Sobel Edge Detection", expanded=False):
+                            # Sobel
+                            # st.sidebar.markdown("### 🧭 Sobel Edge Detection")
+                                sobel_ksize = st.slider("Sobel Kernel Size", 1, 31, 3, step=2)
+                                sobel_scale = st.slider("Sobel Scale", 0.1, 5.0, 1.0, step=0.1)
+                                sobel_delta = st.slider("Sobel Delta", 0, 50, 0)
 
-                        # Laplacian
-                        st.sidebar.markdown("### 🌊 Laplacian Edge Detection")
-                        laplacian_ksize = st.sidebar.slider("Laplacian Kernel Size", 1, 31, 3, step=2)
-                        laplacian_scale = st.sidebar.slider("Laplacian Scale", 0.1, 5.0, 1.0, step=0.1)
+                            with st.expander("Laplacian Edge Detection", expanded=False):
+                                # Laplacian
+                                # st.sidebar.markdown("### 🌊 Laplacian Edge Detection")
+                                laplacian_ksize = st.slider("Laplacian Kernel Size", 1, 31, 3, step=2)
+                                laplacian_scale = st.slider("Laplacian Scale", 0.1, 5.0, 1.0, step=0.1)
 
-                        # Scharr
-                        st.sidebar.markdown("### ⚡ Scharr Edge Detection")
-                        scharr_scale = st.sidebar.slider("Scharr Scale", 0.1, 5.0, 1.0, step=0.1)
-                        scharr_delta = st.sidebar.slider("Scharr Delta", 0, 50, 0)
+                            with st.expander("Scharr Edge Detectionn", expanded=False):
+                                # Scharr
+                                # st.sidebar.markdown("### ⚡ Scharr Edge Detection")
+                                scharr_scale = st.slider("Scharr Scale", 0.1, 5.0, 1.0, step=0.1)
+                                scharr_delta = st.slider("Scharr Delta", 0, 50, 0)
 
+                            with st.expander("Advanced Options", expanded=False):
                         # Advanced options
-                        st.sidebar.markdown("### 🎯 Advanced Options")
-                        show_histogram = st.sidebar.checkbox("Show Edge Histogram", False)
-                        combine_edges = st.sidebar.checkbox("Combine All Edges", False)
-                        edge_dilation = st.sidebar.checkbox("Apply Edge Dilation", False)
-                        if edge_dilation:
-                            dilation_kernel = st.sidebar.slider("Dilation Kernel Size", 1, 10, 2)
+                        # st.sidebar.markdown("### 🎯 Advanced Options")
+                                show_histogram = st.checkbox("Show Edge Histogram", False)
+                                combine_edges = st.checkbox("Combine All Edges", False)
+                                edge_dilation = st.checkbox("Apply Edge Dilation", False)
+                                if edge_dilation:
+                                    dilation_kernel = st.slider("Dilation Kernel Size", 1, 10, 2)
+                            st.markdown("---")
 
                         # Process image
                         processed_img = img_array.copy()
@@ -3627,11 +3644,11 @@ def main():
 
                     def calculate_psnr(original, compressed):
                         """Calculate Peak Signal-to-Noise Ratio"""
-                        return metrics.peak_signal_noise_ratio(original, compressed, data_range=255)
+                        return sk_metrics.peak_signal_noise_ratio(original, compressed, data_range=255)
 
                     def calculate_ssim(original, compressed):
                         """Calculate Structural Similarity Index"""
-                        return metrics.structural_similarity(original, compressed, data_range=255)
+                        return sk_metrics.structural_similarity(original, compressed, data_range=255)
 
                     def dct2(block):
                         """2D Discrete Cosine Transform"""
@@ -3754,19 +3771,21 @@ def main():
                         st.image(img_rgb, caption="🖼️ Original Image", use_column_width=True)
                         
                         # Control panel
-                        st.sidebar.header("🎛️ Analysis Parameters")
-                        block_size = st.sidebar.slider("DCT Block Size", 4, 16, 8, 2)
-                        show_advanced = st.sidebar.checkbox("Show Advanced Visualizations", True)
-                        
+                        with st.sidebar:
+                            st.markdown("---")
+                            with st.expander("Analysis Options", expanded=False):
+                                # st.sidebar.header("🎛️ Analysis Parameters")
+                                block_size = st.slider("DCT Block Size", 4, 16, 8, 2)
+                                show_advanced = st.checkbox("Show Advanced Visualizations", True)
+                            st.markdown("---")    
                         # Basic image info
-                        st.sidebar.markdown("### 📊 Image Information")
-                        st.sidebar.info(f"""
+                        st.markdown("### 📊 Image Information")
+                        st.info(f"""
                         **Dimensions**: {img_rgb.shape[1]} × {img_rgb.shape[0]}
                         **Channels**: {img_rgb.shape[2]}
                         **File Size**: {len(file_bytes)} bytes
                         """)
-                        
-                        st.markdown("---")
+                                
                         
                         # Analysis
                         st.header("🔍 Artifact Analysis Results")
@@ -4109,10 +4128,14 @@ def main():
                     """)
 
                     # Sidebar for options
-                    st.sidebar.header("Analysis Options")
-                    use_seaborn = st.sidebar.checkbox("Use Seaborn for better plots", value=True)
-                    show_3d = st.sidebar.checkbox("Show 3D visualization", value=True)
-                    compare_standard = st.sidebar.selectbox("Compare with standard:", ["luma", "chroma"])
+                    with st.sidebar:
+                        st.markdown("---")
+                        with st.expander("Analysis Options", expanded=False):
+                            # st.sidebar.header("Analysis Options")
+                            use_seaborn = st.checkbox("Use Seaborn for better plots", value=True)
+                            show_3d = st.checkbox("Show 3D visualization", value=True)
+                            compare_standard = st.selectbox("Compare with standard:", ["luma", "chroma"])
+                        st.markdown("---")
 
                     uploaded_file = st.file_uploader("Upload a JPEG image", type=['jpg', 'jpeg'])
 
@@ -4892,18 +4915,22 @@ def main():
                             st.title("🌟 Advanced Luminous Analyzer Pro")
                             st.write("Upload an image to analyze its luminance (brightness) distribution with comprehensive statistical analysis.")
 
-                            # Sidebar for settings
-                            st.sidebar.header("⚙️ Analysis Settings")
+                            with st.sidebar:
+                                st.markdown("---")
+                                with st.expander("Analysis Options", expanded=False):
+                                    # Sidebar for settings
+                                    # st.sidebar.header("⚙️ Analysis Settings")
 
-                            # Color space selection
-                            color_space = st.sidebar.selectbox(
-                                "Luminance Calculation Method",
-                                ["ITU-R BT.601 (Standard)", "ITU-R BT.709 (HDTV)", "Simple Average", "Custom Weights"]
-                            )
+                                    # Color space selection
+                                    color_space = st.selectbox(
+                                        "Luminance Calculation Method",
+                                        ["ITU-R BT.601 (Standard)", "ITU-R BT.709 (HDTV)", "Simple Average", "Custom Weights"]
+                                    )
 
-                            # Image resize option
-                            max_size = st.sidebar.slider("Max Image Size (for performance)", 500, 2000, 1000, 50)
-                            st.sidebar.write("Large images will be resized for faster processing")
+                                    # Image resize option
+                                    max_size = st.slider("Max Image Size (for performance)", 500, 2000, 1000, 50)
+                                    st.write("Large images will be resized for faster processing")
+                                st.markdown("---")
 
                             # Custom weights if selected
                             if color_space == "Custom Weights":
@@ -5341,47 +5368,50 @@ def main():
                         
                         max_components = min(image_np.shape[0], image_np.shape[1])
                         
-                        # Sidebar controls
-                        st.sidebar.header("🔧 PCA Configuration")
-                        
-                        # Component selection methods
-                        selection_method = st.sidebar.radio(
-                            "Component Selection Method:",
-                            ["Manual", "Variance Threshold", "Compression Ratio"]
-                        )
-                        
-                        if selection_method == "Manual":
-                            n_components = st.sidebar.slider(
-                                "Number of PCA Components", 
-                                1, max_components, 
-                                value=min(50, int(max_components * 0.2)),
-                                help="Select the number of principal components to retain"
-                            )
-                        elif selection_method == "Variance Threshold":
-                            variance_threshold = st.sidebar.slider(
-                                "Variance Threshold (%)", 
-                                50, 99, 
-                                value=90,
-                                help="Retain components that explain this percentage of variance"
-                            ) / 100
-                            n_components = max_components  # Will be calculated after PCA
-                        else:  # Compression Ratio
-                            compression_ratio = st.sidebar.slider(
-                                "Compression Ratio", 
-                                2, 50, 
-                                value=10,
-                                help="Higher ratio = more compression"
-                            )
-                            n_components = max(1, max_components // compression_ratio)
-                        
-                        # Analysis options
-                        st.sidebar.header("📈 Analysis Options")
-                        show_variance_plot = st.sidebar.checkbox("Show Variance Analysis", value=True)
-                        show_comparison_grid = st.sidebar.checkbox("Show Detailed Comparison", value=True)
-                        show_metrics = st.sidebar.checkbox("Show Quality Metrics", value=True)
+                        with st.sidebar:
+                            st.markdown("---")
+                            with st.expander("PCA Configuration", expanded=False):
+                                # Sidebar controls
+                                # st.header("🔧 PCA Configuration")
+                                
+                                # Component selection methods
+                                selection_method = st.radio(
+                                    "Component Selection Method:",
+                                    ["Manual", "Variance Threshold", "Compression Ratio"]
+                                )
+                                
+                                if selection_method == "Manual":
+                                    n_components = st.slider(
+                                        "Number of PCA Components", 
+                                        1, max_components, 
+                                        value=min(50, int(max_components * 0.2)),
+                                        help="Select the number of principal components to retain"
+                                    )
+                                elif selection_method == "Variance Threshold":
+                                    variance_threshold = st.slider(
+                                        "Variance Threshold (%)", 
+                                        50, 99, 
+                                        value=90,
+                                        help="Retain components that explain this percentage of variance"
+                                    ) / 100
+                                    n_components = max_components  # Will be calculated after PCA
+                                else:  # Compression Ratio
+                                    compression_ratio = st.slider(
+                                        "Compression Ratio", 
+                                        2, 50, 
+                                        value=10,
+                                        help="Higher ratio = more compression"
+                                    )
+                                    n_components = max(1, max_components // compression_ratio)
+                            with st.expander("Analysis Options", expanded=False):
+                                # Analysis options
+                                # st.sidebar.header("📈 Analysis Options")
+                                show_variance_plot = st.checkbox("Show Variance Analysis", value=True)
+                                show_comparison_grid = st.checkbox("Show Detailed Comparison", value=True)
+                                show_metrics = st.checkbox("Show Quality Metrics", value=True)
                         
                         # Processing
-                        if st.sidebar.button("🚀 Run PCA Analysis", type="primary"):
+                        if st.button("🚀 Run PCA Analysis", type="primary"):
                             progress_bar = st.progress(0)
                             status_text = st.empty()
                             
@@ -5546,9 +5576,6 @@ def main():
                     st.title("📊 Advanced Image Frequency Domain Analysis")
                     st.markdown("*Explore the frequency domain properties of your images with various filtering techniques*")
 
-                    # Sidebar controls
-                    st.sidebar.header("🔧 Controls")
-
                     # Upload image
                     uploaded_file = st.file_uploader("Upload an image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
 
@@ -5589,20 +5616,24 @@ def main():
                             plt.colorbar(im, ax=ax, shrink=0.8)
                             st.pyplot(fig)
 
-                        # Advanced filtering controls
-                        st.sidebar.header("🎛️ Filter Parameters")
-                        
-                        filter_type = st.sidebar.selectbox(
-                            "Filter Type", 
-                            ["Low Pass", "High Pass", "Band Pass", "Band Stop", "Gaussian Low Pass", "Gaussian High Pass"]
-                        )
-                        
-                        if filter_type in ["Band Pass", "Band Stop"]:
-                            inner_radius = st.sidebar.slider("Inner Radius", 1, min(img_array.shape)//4, 15)
-                            outer_radius = st.sidebar.slider("Outer Radius", inner_radius+1, min(img_array.shape)//2, 50)
-                        else:
-                            radius = st.sidebar.slider("Cut-off Radius", 1, min(img_array.shape)//2, 30)
-                        
+                        with st.sidebar:
+                            st.markdown("---")
+                            with st.expander("Filter Parameters", expanded=False):
+                                # Advanced filtering controls
+                                # st.sidebar.header("🎛️ Filter Parameters")
+                                # st.sidebar.header("🔧 Controls")
+                                
+                                filter_type = st.selectbox(
+                                    "Filter Type", 
+                                    ["Low Pass", "High Pass", "Band Pass", "Band Stop", "Gaussian Low Pass", "Gaussian High Pass"]
+                                )
+                                
+                                if filter_type in ["Band Pass", "Band Stop"]:
+                                    inner_radius = st.slider("Inner Radius", 1, min(img_array.shape)//4, 15)
+                                    outer_radius = st.slider("Outer Radius", inner_radius+1, min(img_array.shape)//2, 50)
+                                else:
+                                    radius = st.slider("Cut-off Radius", 1, min(img_array.shape)//2, 30)
+                            st.markdown("---")
                         # Additional parameters for Gaussian filters
                         if "Gaussian" in filter_type:
                             sigma = st.sidebar.slider("Gaussian Sigma", 0.1, 5.0, 1.0, 0.1)
@@ -5783,16 +5814,16 @@ def main():
                                 st.pyplot(fig)
 
                         # Export options
-                        st.sidebar.header("💾 Export Options")
+                        st.header("💾 Export Options")
                         
-                        if st.sidebar.button("Download Filtered Image"):
+                        if st.button("Download Filtered Image"):
                             # Convert back to uint8 for saving
                             filtered_uint8 = (np.clip(img_back, 0, 1) * 255).astype(np.uint8)
                             filtered_pil = Image.fromarray(filtered_uint8, mode='L')
                             
                             # Note: In a real Streamlit app, you'd use st.download_button here
-                            st.sidebar.success("Image ready for download!")
-                            st.sidebar.info("In a full Streamlit deployment, this would trigger a download.")
+                            st.success("Image ready for download!")
+                            st.info("In a full Streamlit deployment, this would trigger a download.")
 
                     else:
                         st.info("👆 Please upload an image to start the frequency domain analysis!")
@@ -5851,7 +5882,7 @@ def main():
                                 "Range": np.max(flat_channel) - np.min(flat_channel),
                                 "Skewness": skew(flat_channel),
                                 "Kurtosis": kurtosis(flat_channel),
-                                "Entropy": entropy(np.histogram(flat_channel, bins=256)[0]+1),
+                                "Entropy": scipy_entropy(np.histogram(flat_channel, bins=256)[0]+1),
                                 "25th Percentile": np.percentile(flat_channel, 25),
                                 "75th Percentile": np.percentile(flat_channel, 75),
                                 "IQR": np.percentile(flat_channel, 75) - np.percentile(flat_channel, 25)
@@ -6055,7 +6086,7 @@ def main():
                             dynamic_range = np.max(gray) - np.min(gray)
                             
                             # Entropy (information content)
-                            img_entropy = entropy(np.histogram(gray, bins=256)[0] + 1)
+                            img_entropy = scipy_entropy(np.histogram(gray, bins=256)[0] + 1)
                             
                             st.metric("Contrast Ratio", f"{contrast:.3f}")
                             st.metric("Dynamic Range", f"{dynamic_range}/255")
