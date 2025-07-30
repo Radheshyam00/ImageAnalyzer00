@@ -55,7 +55,9 @@ streamlit run ImageAnalyzer.py
 ```
 
 Open your browser to `http://localhost:8501`
+
 ---
+
 ## Example Use Cases
 - Audit photo metadata before sharing online
 
