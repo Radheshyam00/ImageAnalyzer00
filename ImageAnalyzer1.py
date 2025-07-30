@@ -4681,13 +4681,37 @@ def main():
                             text-align: center;
                             margin-bottom: 2rem;
                         }
-                        .image-card {
-                            background: white;
-                            border-radius: 15px;
-                            padding: 1rem;
-                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                         /* Base style (optional default) */
+                        .info-card {
+                            padding: 0.5rem;
+                            border-radius: 8px;
+                            border-left: 4px solid #667eea;
                             margin: 1rem 0;
+                            transition: background 0.3s ease, color 0.3s ease;
                         }
+
+                        /* Light mode */
+                        @media (prefers-color-scheme: light) {
+                            .info-card {
+                                background: #f8f9fa;
+                                color: #212529;
+                            }
+                        }
+
+                        /* Dark mode */
+                        @media (prefers-color-scheme: dark) {
+                            .info-card {
+                                background: #2a2a2a;
+                                color: #f1f1f1;
+                            }
+                        }
+                        # .info-card {
+                        #     background: white;
+                        #     border-radius: 15px;
+                        #     padding: 1rem;
+                        #     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                        #     margin: 1rem 0;
+                        # }
                     </style>
                     """, unsafe_allow_html=True)
 
@@ -4700,30 +4724,33 @@ def main():
                     """, unsafe_allow_html=True)
 
                     # Sidebar with enhanced styling
-                    st.sidebar.markdown("## ⚙️ Settings & Options")
-                    st.sidebar.markdown("---")
+                    with st.sidebar:
+                        st.sidebar.markdown("---")
+                        with st.expander("⚙️ Settings & Options", expanded=False):
+                        # st.sidebar.markdown("## ⚙️ Settings & Options")
+                        # st.sidebar.markdown("---")
 
-                    # Enhanced sidebar options
-                    show_all_exif = st.sidebar.checkbox("🔍 Show detailed EXIF metadata", value=False)
-                    map_style = st.sidebar.selectbox(
-                        "🗺️ Map Style", 
-                        ["OpenStreetMap", "Stamen Terrain", "CartoDB Positron"],
-                        help="Choose your preferred map visualization style"
-                    )
+                        # Enhanced sidebar options
+                            show_all_exif = st.checkbox("🔍 Show detailed EXIF metadata", value=False)
+                            map_style = st.selectbox(
+                                "🗺️ Map Style", 
+                                ["OpenStreetMap", "Stamen Terrain", "CartoDB Positron"],
+                                help="Choose your preferred map visualization style"
+                            )
 
-                    # Map zoom level
-                    map_zoom = st.sidebar.slider("🔍 Map Zoom Level", min_value=10, max_value=20, value=15)
+                            # Map zoom level
+                            map_zoom = st.slider("🔍 Map Zoom Level", min_value=10, max_value=20, value=15)
+                        with st.expander("📊 Session Stats", expanded=False):
+                    # st.sidebar.markdown("---")
+                            st.markdown("### 📊 Session Stats")
+                            if 'processed_images' not in st.session_state:
+                                st.session_state.processed_images = 0
+                            if 'images_with_gps' not in st.session_state:
+                                st.session_state.images_with_gps = 0
 
-                    st.sidebar.markdown("---")
-                    st.sidebar.markdown("### 📊 Session Stats")
-                    if 'processed_images' not in st.session_state:
-                        st.session_state.processed_images = 0
-                    if 'images_with_gps' not in st.session_state:
-                        st.session_state.images_with_gps = 0
-
-                    st.sidebar.metric("Images Processed", st.session_state.processed_images)
-                    st.sidebar.metric("GPS Data Found", st.session_state.images_with_gps)
-
+                            st.metric("Images Processed", st.session_state.processed_images)
+                            st.metric("GPS Data Found", st.session_state.images_with_gps)
+                        st.markdown("---")
                     # File uploader with enhanced styling
                     # st.markdown("""
                     # <div class="upload-section">
@@ -4756,7 +4783,7 @@ def main():
                             # Image card container
                             with st.container():
                                 st.markdown(f"""
-                                <div class="image-card">
+                                <div class="info-card">
                                     <h2>📷 {uploaded_file.name}</h2>
                                 </div>
                                 """, unsafe_allow_html=True)
