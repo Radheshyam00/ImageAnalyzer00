@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Features
+## Features
 
 - 📁 File Information: Name, size, MIME type, MD5/SHA256 hash, magic bytes.
 - 🧬 EXIF & Metadata Viewer: Camera info, timestamps, GPS, exposure settings.
@@ -19,7 +19,7 @@
 
 ---
 
-## 🖼️ Supported Formats
+## Supported Formats
 
 - JPEG (.jpg, .jpeg)
 - PNG (.png)
@@ -30,13 +30,13 @@
 
 ---
 
-## 🔧 Installation
+## Installation
 
 
 ```bash
 # Clone the repository
 git clone https://github.com/Radheshyam00/ImageAnalyzer00.git
-cd image-analyzer
+cd ImageAnalyzer00
 
 # Create and activate a virtual environment
 python -m venv venv
