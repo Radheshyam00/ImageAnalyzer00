@@ -6,7 +6,6 @@ Pillow
 piexif
 folium
 streamlit-folium
-json
 numpy
 pandas
 seaborn
