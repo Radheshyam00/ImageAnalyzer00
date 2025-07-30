@@ -7,6 +7,7 @@ piexif
 folium
 streamlit-folium
 numpy
+bson
 pandas
 seaborn
 opencv-python
