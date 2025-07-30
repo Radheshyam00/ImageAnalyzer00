@@ -9,7 +9,7 @@ streamlit-folium
 numpy
 pandas
 seaborn
-opencv-python
+opencv
 scikit-learn
 matplotlib
 plotly
