@@ -1,12 +1,12 @@
 import streamlit as st
 from streamlit_ace import st_ace
-import imghdr
+# import imghdr
 import string
 import hashlib
 import binascii
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from PIL.ExifTags import TAGS, GPSTAGS
 import io
 import struct
@@ -2973,7 +2973,10 @@ def main():
                                 col1, col2, col3, col4 = st.columns(4)
 
                                 with col1:
-                                    img_format = image.format
+                                    try:
+                                        img_format = image.format
+                                    except UnidentifiedImageError:
+                                        img_format = None
 
                                     # Fallback: use filename extension
                                     if not img_format and hasattr(uploaded_file, "name"):
@@ -2982,9 +2985,13 @@ def main():
 
                                     # Extra fallback using imghdr
                                     if not img_format or img_format == 'UNKNOWN':
-                                        uploaded_file.seek(0)
-                                        img_format = imghdr.what(uploaded_file) or 'Unknown'
-                                        uploaded_file.seek(0)
+                                        try:
+                                            uploaded_file.seek(0)
+                                            with Image.open(uploaded_file) as img_check:
+                                                img_format = img_check.format or 'Unknown'
+                                            uploaded_file.seek(0)
+                                        except Exception:
+                                            img_format = 'Unknown'
                                     st.metric(label="Format", value=img_format)
 
                                 with col2:
