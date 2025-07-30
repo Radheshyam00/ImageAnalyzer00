@@ -3,10 +3,16 @@ streamlit-ace
 pymongo
 python-dotenv
 Pillow
-requests
 piexif
+folium
+streamlit-folium
+bson
 numpy
+pandas
+seaborn
 opencv-python
 scikit-learn
 matplotlib
 plotly
+scipy
+scikit-image
