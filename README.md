@@ -48,14 +48,14 @@ pip install -r requirements.txt
 # Create a .env file in the root directory and add
 MONGO_URI=your_mongodb_uri  # optional, for File Inspector Pro
 ```
-
+---
 ## Running the App
 ```bash
 streamlit run ImageAnalyzer.py
 ```
 
 Open your browser to `http://localhost:8501`
-
+---
 ## Example Use Cases
 - Audit photo metadata before sharing online
 
