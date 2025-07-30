@@ -1027,7 +1027,6 @@ def main():
                     text-align: center;
                     margin-bottom: 2rem;
                 }
-                }
             </style>
             """, unsafe_allow_html=True)
             
@@ -1067,7 +1066,7 @@ def main():
            
             
             uploaded_file = st.file_uploader(
-                "Choose an image file",
+                "📁 Choose an image file",
                 type=['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp'],
                 help="Supported formats: JPEG, PNG, GIF, BMP, TIFF, WebP"
             )
@@ -1089,7 +1088,8 @@ def main():
                     with col1:
                         try:
                             image = Image.open(uploaded_file)
-                            st.image(image, caption=uploaded_file.name, use_column_width=True)
+                            resized_image = image.resize((400, 300))
+                            st.image(resized_image, caption=uploaded_file.name, use_column_width=True)
                         except Exception as e:
                             st.error(f"Could not display image: {e}")
                             image = None
@@ -1116,140 +1116,148 @@ def main():
                             st.text(f"{key}: {value}")
                 
                 # VirusTotal Malware Check - Priority section
-                st.markdown("---")
-                st.subheader("🛡️ Malware & Security Analysis")
-                
-                if st.button("🔍 Scan with VirusTotal", type="primary"):
-                    with st.spinner("Scanning file with VirusTotal..."):
-                        vt_result = process_virustotal_scan(file_bytes, uploaded_file.name, sha256_hash, api_key)
-                        st.session_state['vt_result'] = vt_result
-                
-                # Display cached results if available
-                if 'vt_result' in st.session_state:
-                    display_virustotal_results(st.session_state['vt_result'])
+                with st.expander("🛡️ Malware & Security Analysis", expanded=False):
+                    # st.markdown("---")
+                    st.subheader("🛡️ Malware & Security Analysis")
+                    
+                    if st.button("🔍 Scan with VirusTotal", type="primary"):
+                        with st.spinner("Scanning file with VirusTotal..."):
+                            vt_result = process_virustotal_scan(file_bytes, uploaded_file.name, sha256_hash, api_key)
+                            st.session_state['vt_result'] = vt_result
+                    
+                    # Display cached results if available
+                    if 'vt_result' in st.session_state:
+                        display_virustotal_results(st.session_state['vt_result'])
                 
                 # Image properties
-                st.markdown("---")
-                if image:
-                    st.subheader("🖼️ Image Properties")
-                    
-                    width, height = image.size
-                    megapixels = (width * height) / 1_000_000
-                    
-                    image_props = {
-                        "Image Width": f"{width} pixels",
-                        "Image Height": f"{height} pixels",
-                        "Megapixels": f"{megapixels:.2f} MP",
-                        "Image Size": f"{width} × {height}",
-                        "Color Mode": image.mode,
-                        "Format": image.format,
-                    }
-                    
-                    # Additional format-specific info
-                    if hasattr(image, 'info'):
-                        if 'dpi' in image.info:
-                            image_props["DPI"] = str(image.info['dpi'])
-                        if 'compression' in image.info:
-                            image_props["Compression"] = image.info['compression']
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        for key, value in list(image_props.items())[:len(image_props)//2]:
-                            st.text(f"{key}: {value}")
-                    with col2:
-                        for key, value in list(image_props.items())[len(image_props)//2:]:
-                            st.text(f"{key}: {value}")
+                with st.expander("🖼️ Image Properties", expanded=False):
+                    # st.markdown("---")
+                    if image:
+                        st.subheader("🖼️ Image Properties")
+                        
+                        width, height = image.size
+                        megapixels = (width * height) / 1_000_000
+                        
+                        image_props = {
+                            "Image Width": f"{width} pixels",
+                            "Image Height": f"{height} pixels",
+                            "Megapixels": f"{megapixels:.2f} MP",
+                            "Image Size": f"{width} × {height}",
+                            "Color Mode": image.mode,
+                            "Format": image.format,
+                        }
+                        
+                        # Additional format-specific info
+                        if hasattr(image, 'info'):
+                            if 'dpi' in image.info:
+                                image_props["DPI"] = str(image.info['dpi'])
+                            if 'compression' in image.info:
+                                image_props["Compression"] = image.info['compression']
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            for key, value in list(image_props.items())[:len(image_props)//2]:
+                                st.text(f"{key}: {value}")
+                        with col2:
+                            for key, value in list(image_props.items())[len(image_props)//2:]:
+                                st.text(f"{key}: {value}")
                 
                 # JFIF Metadata
-                st.markdown("---")
-                st.subheader("🏷️ JFIF Metadata")
-                jfif_info = extract_jfif_info(file_bytes)
-                if jfif_info:
-                    for key, value in jfif_info.items():
-                        st.text(f"{key}: {value}")
-                else:
-                    st.text("No JFIF metadata found")
+                with st.expander("🏷️ JFIF Metadata", expanded=False):
+                # st.markdown("---")
+                    st.subheader("🏷️ JFIF Metadata")
+                    jfif_info = extract_jfif_info(file_bytes)
+                    if jfif_info:
+                        for key, value in jfif_info.items():
+                            st.text(f"{key}: {value}")
+                    else:
+                        st.text("No JFIF metadata found")
                 
                 # ICC Color Profile
-                st.markdown("---")
-                st.subheader("🎨 ICC Color Profile Metadata")
-                icc_info = extract_icc_profile(file_bytes)
-                if icc_info:
-                    col1, col2 = st.columns(2)
-                    items = list(icc_info.items())
-                    mid = len(items) // 2
+                with st.expander("🎨 ICC Color Profile Metadata", expanded=False):
+                # st.markdown("---")
+                    st.subheader("🎨 ICC Color Profile Metadata")
+                    icc_info = extract_icc_profile(file_bytes)
+                    if icc_info:
+                        col1, col2 = st.columns(2)
+                        items = list(icc_info.items())
+                        mid = len(items) // 2
+                        
+                        with col1:
+                            for key, value in items[:mid]:
+                                st.text(f"{key}: {value}")
+                        with col2:
+                            for key, value in items[mid:]:
+                                st.text(f"{key}: {value}")
+                    else:
+                        st.text("No ICC color profile found")
                     
-                    with col1:
-                        for key, value in items[:mid]:
-                            st.text(f"{key}: {value}")
-                    with col2:
-                        for key, value in items[mid:]:
-                            st.text(f"{key}: {value}")
-                else:
-                    st.text("No ICC color profile found")
-                
                 # EXIF Metadata
-                st.markdown("---")
-                st.subheader("🧬 EXIF Metadata")
-                if image:
-                    exif_data = extract_exif_data(image)
-                    if exif_data:
-                        # Display in expandable sections
-                        with st.expander("Camera Information", expanded=True):
+                with st.expander("🧬 EXIF Metadata", expanded=False):
+                    # st.markdown("---")
+                    st.subheader("🧬 EXIF Metadata")
+                    if image:
+                        exif_data = extract_exif_data(image)
+                        if exif_data:
+                            # Display in expandable sections
+                            # with st.expander("Camera Information", expanded=True):
                             camera_fields = ['Make', 'Model', 'Software', 'DateTime', 'DateTimeOriginal']
                             for field in camera_fields:
                                 if field in exif_data:
                                     st.text(f"{field}: {exif_data[field]}")
-                        
-                        with st.expander("Camera Settings"):
+                            
+                            # with st.expander("Camera Settings"):
                             settings_fields = ['ExposureTime', 'FNumber', 'ISOSpeedRatings', 'FocalLength', 'Flash']
                             for field in settings_fields:
                                 if field in exif_data:
                                     st.text(f"{field}: {exif_data[field]}")
-                        
-                        if 'GPS' in exif_data:
-                            with st.expander("GPS Information"):
-                                for key, value in exif_data['GPS'].items():
-                                    st.text(f"{key}: {value}")
-                        
-                        with st.expander("All EXIF Data"):
+                            
+                            if 'GPS' in exif_data:
+                                with st.expander("GPS Information"):
+                                    for key, value in exif_data['GPS'].items():
+                                        st.text(f"{key}: {value}")
+                            
+                            # with st.expander("All EXIF Data"):
                             for key, value in exif_data.items():
                                 if key != 'GPS':
                                     st.text(f"{key}: {value}")
-                    else:
-                        st.text("No EXIF metadata found")
-                else:
-                    st.text("Could not extract EXIF data - image failed to load")
-                
-                # Steganographic indicators
-                st.markdown("---")
-                st.subheader("🔐 Steganographic / Hidden Indicators")
-                steg_indicators = check_steganographic_indicators(file_bytes, uploaded_file.name)
-                if steg_indicators:
-                    for key, value in steg_indicators.items():
-                        if key == 'high_entropy_warning':
-                            st.warning("⚠️ High entropy detected in file tail - possible hidden data")
                         else:
-                            st.text(f"{key}: {value}")
-                else:
-                    st.text("No suspicious indicators detected")
+                            st.text("No EXIF metadata found")
+                    else:
+                        st.text("Could not extract EXIF data - image failed to load")
+                    
+                # Steganographic indicators
+                with st.expander("🔐 Steganographic / Hidden Indicators", expanded=False):
+                    # st.markdown("---")
+                    st.subheader("🔐 Steganographic / Hidden Indicators")
+                    steg_indicators = check_steganographic_indicators(file_bytes, uploaded_file.name)
+                    if steg_indicators:
+                        for key, value in steg_indicators.items():
+                            if key == 'high_entropy_warning':
+                                st.warning("⚠️ High entropy detected in file tail - possible hidden data")
+                            else:
+                                st.text(f"{key}: {value}")
+                    else:
+                        st.text("No suspicious indicators detected")
                 
                 # Header analysis
-                st.markdown("---")
-                st.subheader("🔎 Header Analysis")
-                header_analysis = analyze_header_validity(file_bytes, uploaded_file.type)
-                for key, value in header_analysis.items():
-                    if key == 'magic_bytes_valid':
-                        if value:
-                            st.success(f"✅ Magic bytes valid")
+                with st.expander("🔎 Header Analysis", expanded=False):
+                    # st.markdown("---")
+                    st.subheader("🔎 Header Analysis")
+                    header_analysis = analyze_header_validity(file_bytes, uploaded_file.type)
+                    for key, value in header_analysis.items():
+                        if key == 'magic_bytes_valid':
+                            if value:
+                                st.success(f"✅ Magic bytes valid")
+                            else:
+                                st.error(f"❌ Invalid magic bytes detected")
                         else:
-                            st.error(f"❌ Invalid magic bytes detected")
-                    else:
-                        st.text(f"{key}: {value}")
+                            st.text(f"{key}: {value}")
 
                 # Metadata Editor and Remover
-                st.markdown("---")
-                create_metadata_editor_ui(uploaded_file, file_bytes)
+                with st.expander("✏️ Metadata Editor", expanded=False):
+                    # st.markdown("---")
+                    create_metadata_editor_ui(uploaded_file, file_bytes)
                 
                 
                 # Download full report
@@ -1275,6 +1283,7 @@ def main():
                         file_name=f"{uploaded_file.name}_security_metadata_report.json",
                         mime="application/json"
                     )
+                st.markdown("---")
     elif page == "⚙️ Reverse Image Analyzer":
         st.title("Product Analysis Tool")
     elif page == "File Inspector Pro":
@@ -1308,13 +1317,31 @@ def main():
                 margin-bottom: 2rem;
             }
             
+            /* Base style (optional default) */
             .info-card {
-                background: #f8f9fa;
                 padding: 0.5rem;
                 border-radius: 8px;
                 border-left: 4px solid #667eea;
                 margin: 1rem 0;
+                transition: background 0.3s ease, color 0.3s ease;
             }
+
+            /* Light mode */
+            @media (prefers-color-scheme: light) {
+                .info-card {
+                    background: #f8f9fa;
+                    color: #212529;
+                }
+            }
+
+            /* Dark mode */
+            @media (prefers-color-scheme: dark) {
+                .info-card {
+                    background: #2a2a2a;
+                    color: #f1f1f1;
+                }
+            }
+
             
             .metric-container {
                 background: white;
@@ -1560,18 +1587,18 @@ def main():
         """, unsafe_allow_html=True)
 
         # Database status indicator
-        if db is not None:
-            st.markdown("""
-            <div class="db-status">
-                <strong>✅ MongoDB Connected:</strong> Data will be stored in the cloud database
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div style="background: #ffebee; padding: 0.5rem; border-radius: 5px; border-left: 3px solid #f44336; margin: 0.5rem 0;">
-                <strong>❌ MongoDB Disconnected:</strong> Analysis will not be saved
-            </div>
-            """, unsafe_allow_html=True)
+        # if db is not None:
+        #     st.markdown("""
+        #     <div class="db-status">
+        #         <strong>✅ MongoDB Connected:</strong> Data will be stored in the cloud database
+        #     </div>
+        #     """, unsafe_allow_html=True)
+        # else:
+        #     st.markdown("""
+        #     <div style="background: #ffebee; padding: 0.5rem; border-radius: 5px; border-left: 3px solid #f44336; margin: 0.5rem 0;">
+        #         <strong>❌ MongoDB Disconnected:</strong> Analysis will not be saved
+        #     </div>
+        #     """, unsafe_allow_html=True)
 
         # Sidebar configuration
         with st.sidebar:
@@ -1735,23 +1762,7 @@ def main():
                             max_string_length
                         )
                 
-                # Save to database
-                if save_to_db and db is not None:
-                    if st.button("💾 Save Analysis to Database", type="primary"):
-                        with st.spinner("Saving to MongoDB..."):
-                            doc_id = save_file_analysis(
-                                uploaded_file.name,
-                                file_bytes,
-                                extracted_strings,
-                                hashes,
-                                file_type
-                            )
-                            
-                            if doc_id:
-                                st.success(f"✅ Analysis saved! Document ID: {doc_id}")
-                            else:
-                                st.error("❌ Failed to save analysis")
-                    st.markdown("---")
+                
                 
                 # Rest of the analysis interface (keeping original structure)
                 # if show_stats:
@@ -1779,7 +1790,8 @@ def main():
                 #         st.markdown("---")
 
                 # Tabbed interface for different views
-                subtab1, subtab2, subtab3, subtab4, subtab5 = st.tabs(["🔢 Hex View", "✏️ Hex Editor", "🧵 Strings", "📝 Text Editor", "📊 Raw Data"])
+                with st.expander("🔢 Hex Editor & Tools", expanded=False):
+                    subtab1, subtab2, subtab3, subtab4, subtab5 = st.tabs(["🔢 Hex View", "✏️ Hex Editor", "🧵 Strings", "📝 Text Editor", "📊 Raw Data"])
                 
                 with subtab1:
                     if show_hex and file_bytes:
@@ -1920,7 +1932,24 @@ def main():
                         if file_bytes:
                             decimal_output = ' '.join(str(b) for b in file_bytes[:64])
                             st.code(decimal_output, language='')
-
+                
+                # Save to database
+                if save_to_db and db is not None:
+                    if st.button("💾 Save Analysis to Database", type="primary"):
+                        with st.spinner("Saving to MongoDB..."):
+                            doc_id = save_file_analysis(
+                                uploaded_file.name,
+                                file_bytes,
+                                extracted_strings,
+                                hashes,
+                                file_type
+                            )
+                            
+                            if doc_id:
+                                st.success(f"✅ Analysis saved! Document ID: {doc_id}")
+                            else:
+                                st.error("❌ Failed to save analysis")
+                    # st.markdown("---")
             else:
                 # Welcome message
                 st.markdown("""
@@ -2031,12 +2060,12 @@ def main():
 
         # Footer
         st.markdown("---")
-        st.markdown(
-            "<div style='text-align: center; color: #6c757d;'>"
-            "🔍 File Inspector Pro - Advanced Binary Analysis with MongoDB Storage"
-            "</div>", 
-            unsafe_allow_html=True
-        )
+        # st.markdown(
+        #     "<div style='text-align: center; color: #6c757d;'>"
+        #     "🔍 File Inspector Pro - Advanced Binary Analysis with MongoDB Storage"
+        #     "</div>", 
+        #     unsafe_allow_html=True
+        # )
     elif page == "Advanced Image Forensics Analyzer":
                     
         st.markdown("""
@@ -2340,7 +2369,7 @@ def main():
                 
                 # File upload
                 uploaded_file = st.file_uploader(
-                    "Upload image for forensic analysis",
+                    "📁 Upload image for forensic analysis",
                     type=["jpg", "jpeg", "png", "tiff", "bmp"],
                     help="Supported formats: JPEG, PNG, TIFF, BMP"
                 )
@@ -2704,10 +2733,11 @@ def main():
                             st.info("Enable 'Generate Report' in the sidebar to create a detailed analysis report.")
                 
                 else:
-                    st.info("👆 Upload an image to begin forensic analysis")
+                    # st.info("👆 Upload an image to begin forensic analysis")
                     
                     # Show example analysis
-                    st.markdown("### 🎯 What This Tool Analyzes")
+                    st.markdown("---")
+                    st.markdown("### What This Tool Analyzes")
                     
                     col1, col2, col3 = st.columns(3)
                     
@@ -2761,20 +2791,29 @@ def main():
                         )
                 
                 if page1 == "Error Level Analysis (ELA)":
-                    st.title("🔍 Advanced Error Level Analysis (ELA) for Image Forensics")
-
+                    # Custom CSS for modern UI
                     st.markdown("""
-                    **Error Level Analysis (ELA)** highlights areas of an image that may have been digitally altered.
-                    It works by comparing the original image to a re-compressed version and analyzing the differences.
-
-                    ### How to interpret ELA results:
-                    - **Bright areas**: Potential signs of manipulation or high compression artifacts
-                    - **Dark areas**: Original, unmodified regions
-                    - **Uniform brightness**: Likely authentic content
-                    - **Sharp brightness differences**: Possible edited boundaries
-
-                    *Best results with JPEG images. PNG/other formats may show uniform patterns.*
-                    """)
+                    <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # Header
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>🔍 Advanced Error Level Analysis (ELA) for Image Forensics</h1>
+                        <p>Error Level Analysis (ELA) highlights areas of an image that may have been digitally altered.
+                    It works by comparing the original image to a re-compressed version and analyzing the differences.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    # st.title("🔍 Advanced Error Level Analysis (ELA) for Image Forensics")
 
                     # Sidebar for advanced options
                     # with st.sidebar:
@@ -3013,28 +3052,63 @@ def main():
                         st.info("👆 Please upload an image file to begin ELA analysis.")
                         
                         # Example section
-                        st.subheader("🎓 How ELA Works")
-                        st.markdown("""
-                        1. **Original Image**: The uploaded image in its current state
-                        2. **Recompression**: The image is saved again with specified JPEG quality
-                        3. **Difference Calculation**: Pixel-by-pixel differences are calculated
-                        4. **Enhancement**: Differences are amplified for visibility
-                        5. **Analysis**: Statistical and visual analysis of the results
-                        
-                        **Key Indicators to Look For:**
-                        - Sharp boundaries between bright and dark areas
-                        - Inconsistent error levels across similar textures
-                        - Rectangular or geometric patterns of high error
-                        - Areas that don't match the expected compression behavior
-                        """)
+                        with st.expander("How ELA Works", expanded=False):
+                        # st.subheader("🎓 How ELA Works")
+                            st.markdown("""
+                            1. **Original Image**: The uploaded image in its current state
+                            2. **Recompression**: The image is saved again with specified JPEG quality
+                            3. **Difference Calculation**: Pixel-by-pixel differences are calculated
+                            4. **Enhancement**: Differences are amplified for visibility
+                            5. **Analysis**: Statistical and visual analysis of the results
+                            
+                            **Key Indicators to Look For:**
+                            - Sharp boundaries between bright and dark areas
+                            - Inconsistent error levels across similar textures
+                            - Rectangular or geometric patterns of high error
+                            - Areas that don't match the expected compression behavior
+                            """)
+                        with st.expander("How to interpret ELA results", expanded=False):
+                            st.markdown("""
+
+                            - **Bright areas**: Potential signs of manipulation or high compression artifacts
+                            - **Dark areas**: Original, unmodified regions
+                            - **Uniform brightness**: Likely authentic content
+                            - **Sharp brightness differences**: Possible edited boundaries
+
+                            *Best results with JPEG images. PNG/other formats may show uniform patterns.*
+                            """)
+
+
+
 
                     # Footer
                     st.markdown("---")
                     st.markdown("**Note**: This tool is for educational and research purposes. Professional forensic analysis requires multiple techniques and expert interpretation.")
 
                 elif page1 == "Enhanced Edge Detection":
-                    st.title("🧠 Advanced Enhanced Edge Detection")
-                    st.markdown("Upload an image and apply advanced edge detection techniques using OpenCV.")
+                    # Custom CSS for modern UI
+                    st.markdown("""
+                    <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # Header
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>🧠 Advanced Enhanced Edge Detection</h1>
+                        <p>Upload an image and apply advanced edge detection techniques using OpenCV.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    # st.title("🧠 Advanced Enhanced Edge Detection")
+                    # st.markdown("Upload an image and apply advanced edge detection techniques using OpenCV.")
 
                     # Sidebar for controls
                     # st.sidebar.title("⚙️ Edge Detection Parameters")
@@ -3287,43 +3361,66 @@ def main():
                         st.info("👆 Please upload an image to get started with edge detection!")
                         
                         # Sample information
+                        # st.markdown("---")
+                        with st.expander("About Edge Detection Methods", expanded=False):
+                            # st.subheader("🎓 About Edge Detection Methods")
+                            
+                            col_info1, col_info2 = st.columns(2)
+                            
+                            with col_info1:
+                                st.markdown("""
+                                **🧱 Canny Edge Detection:**
+                                - Multi-stage algorithm with noise reduction
+                                - Uses double thresholding
+                                - Connects edge pixels to form contours
+                                - Best for clean, well-defined edges
+                                
+                                **🧭 Sobel Edge Detection:**
+                                - Uses convolution with Sobel kernels
+                                - Emphasizes edges in both X and Y directions
+                                - Good for gradient-based edge detection
+                                - Robust to noise
+                                """)
+                            
+                            with col_info2:
+                                st.markdown("""
+                                **🌊 Laplacian Edge Detection:**
+                                - Second-derivative based method
+                                - Sensitive to noise but finds thin edges
+                                - Good for detecting blobs and fine details
+                                - Often combined with Gaussian blur
+                                
+                                **⚡ Scharr Edge Detection:**
+                                - Optimized version of Sobel
+                                - Better rotational symmetry
+                                - More accurate gradient calculation
+                                - Good for precise edge orientation
+                                """)
                         st.markdown("---")
-                        st.subheader("🎓 About Edge Detection Methods")
-                        
-                        col_info1, col_info2 = st.columns(2)
-                        
-                        with col_info1:
-                            st.markdown("""
-                            **🧱 Canny Edge Detection:**
-                            - Multi-stage algorithm with noise reduction
-                            - Uses double thresholding
-                            - Connects edge pixels to form contours
-                            - Best for clean, well-defined edges
-                            
-                            **🧭 Sobel Edge Detection:**
-                            - Uses convolution with Sobel kernels
-                            - Emphasizes edges in both X and Y directions
-                            - Good for gradient-based edge detection
-                            - Robust to noise
-                            """)
-                        
-                        with col_info2:
-                            st.markdown("""
-                            **🌊 Laplacian Edge Detection:**
-                            - Second-derivative based method
-                            - Sensitive to noise but finds thin edges
-                            - Good for detecting blobs and fine details
-                            - Often combined with Gaussian blur
-                            
-                            **⚡ Scharr Edge Detection:**
-                            - Optimized version of Sobel
-                            - Better rotational symmetry
-                            - More accurate gradient calculation
-                            - Good for precise edge orientation
-                            """)
 
                 elif page1 == "Noise Analysis":
-                    st.title("🧠 Advanced Noise Detection in Images")
+                    # Custom CSS for modern UI
+                    st.markdown("""
+                    <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # Header
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>🧠 Advanced Noise Detection in Images</h1>
+                        <p>Upload an image and apply Advanced Noise Detection techniques using OpenCV.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    # st.title("🧠 Advanced Noise Detection in Images")
 
                     uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png", "tif", "tiff"])
 
@@ -3622,9 +3719,16 @@ def main():
                         )
                 
                 if page1 == "JPEG Artifact Analysis":
-                    # Custom CSS for better styling
                     st.markdown("""
                     <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
                         .metric-container {
                             background-color: #f0f2f6;
                             padding: 1rem;
@@ -3637,8 +3741,14 @@ def main():
                     </style>
                     """, unsafe_allow_html=True)
 
-                    st.title("🔬 Advanced JPEG Artifact Analysis Tool")
-                    st.markdown("*Comprehensive analysis of JPEG compression artifacts using multiple detection methods*")
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>🔬 Advanced JPEG Artifact Analysis Tool</h1>
+                        <p>Comprehensive analysis of JPEG compression artifacts using multiple detection methods</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    # st.title("🔬 Advanced JPEG Artifact Analysis Tool")
+                    # st.markdown("*Comprehensive analysis of JPEG compression artifacts using multiple detection methods*")
 
                     uploaded_file = st.file_uploader("📤 Upload a JPEG image", type=['jpg', 'jpeg'])
 
@@ -3958,19 +4068,17 @@ def main():
 
                     else:
                         st.info("📥 Please upload a JPEG image to begin comprehensive artifact analysis.")
-                        st.markdown("""
-                        ### 🔬 What This Tool Analyzes
-                        
-                        - **DCT Coefficient Patterns**: Visualizes frequency domain artifacts
-                        - **Blockiness Detection**: Identifies 8×8 block boundaries from JPEG compression
-                        - **Ringing Artifacts**: Detects oscillations around sharp edges
-                        - **Mosquito Noise**: Identifies high-frequency noise around edges
-                        - **Signal Quality Metrics**: PSNR and SSIM calculations
-                        - **Overall Quality Assessment**: Composite score based on multiple factors
-                        
-                        ### 📊 Supported Formats
-                        - JPEG (.jpg, .jpeg)
-                        """)
+                        with st.expander("What This Tool Analyzes", expanded=False):
+                            st.markdown("""
+                            
+                            - **DCT Coefficient Patterns**: Visualizes frequency domain artifacts
+                            - **Blockiness Detection**: Identifies 8×8 block boundaries from JPEG compression
+                            - **Ringing Artifacts**: Detects oscillations around sharp edges
+                            - **Mosquito Noise**: Identifies high-frequency noise around edges
+                            - **Signal Quality Metrics**: PSNR and SSIM calculations
+                            - **Overall Quality Assessment**: Composite score based on multiple factors
+                            """)
+                        st.markdown("---")
 
                 elif page1 == "Quantization Table Analysis":
                     def extract_quantization_tables(img):
@@ -4120,12 +4228,34 @@ def main():
 
                     # Streamlit UI
                     # st.set_page_config(page_title="Advanced JPEG Quantization Analyzer", layout="wide")
-                    st.title("🧮 Advanced JPEG Quantization Table Analysis")
-
+                    # Custom CSS for modern UI
                     st.markdown("""
-                    This tool analyzes JPEG quantization tables, which control the compression quality and characteristics.
-                    Upload a JPEG image to examine its quantization tables and compare them with standard tables.
-                    """)
+                    <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # Header
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>🧮 Advanced JPEG Quantization Table Analysis</h1>
+                        <p>This tool analyzes JPEG quantization tables, which control the compression quality and characteristics.
+                    Upload a JPEG image to examine its quantization tables and compare them with standard tables.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    # st.title("🧮 Advanced JPEG Quantization Table Analysis")
+
+                    # st.markdown("""
+                    # This tool analyzes JPEG quantization tables, which control the compression quality and characteristics.
+                    # Upload a JPEG image to examine its quantization tables and compare them with standard tables.
+                    # """)
 
                     # Sidebar for options
                     with st.sidebar:
@@ -4249,10 +4379,31 @@ def main():
                         - Quality 50: Balanced
                         - Quality 10-25: High compression
                         """)
+                    st.markdown("---")
 
                 elif page1 == "Compression History":
-                    st.title("Compression History")
-
+                    st.markdown("""
+                    <style>
+                        .main-header {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            padding: 2rem;
+                            border-radius: 10px;
+                            color: white;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # Header
+                    st.markdown("""
+                    <div class="main-header">
+                        <h1>Compression History</h1>
+                        <p>This tool analyzes JPEG quantization tables, which control the compression quality and characteristics.
+                    Upload a JPEG image to examine its quantization tables and compare them with standard tables.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
             elif page_E == "Metadata Forensics":
                 page1 = st.sidebar.selectbox("Select Analysis Tool", 
                         ["EXIF Data",
@@ -4520,14 +4671,6 @@ def main():
                             </div>
                             """, unsafe_allow_html=True)
 
-                    # -------- Streamlit UI --------
-                    # st.set_page_config(
-                    #     page_title="📍 Enhanced Image Geolocation Finder", 
-                    #     layout="wide",
-                    #     initial_sidebar_state="expanded"
-                    # )
-
-                    # Custom CSS for better styling
                     st.markdown("""
                     <style>
                         .main-header {
@@ -4537,14 +4680,6 @@ def main():
                             color: white;
                             text-align: center;
                             margin-bottom: 2rem;
-                        }
-                        .upload-section {
-                            background: #f8f9fa;
-                            padding: 2rem;
-                            border-radius: 10px;
-                            border: 2px dashed #007bff;
-                            text-align: center;
-                            margin: 1rem 0;
                         }
                         .image-card {
                             background: white;
@@ -4590,12 +4725,12 @@ def main():
                     st.sidebar.metric("GPS Data Found", st.session_state.images_with_gps)
 
                     # File uploader with enhanced styling
-                    st.markdown("""
-                    <div class="upload-section">
-                        <h3>📤 Upload Your Images</h3>
-                        <p>Drag and drop your JPEG files here, or click to browse</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # st.markdown("""
+                    # <div class="upload-section">
+                    #     <h3>📤 Upload Your Images</h3>
+                    #     <p>Drag and drop your JPEG files here, or click to browse</p>
+                    # </div>
+                    # """, unsafe_allow_html=True)
 
                     uploaded_files = st.file_uploader(
                         "Choose images", 
@@ -4912,8 +5047,29 @@ def main():
                         )
                 
                 if page1 == "Advanced Luminous Analyzer Pro":
-                            st.title("🌟 Advanced Luminous Analyzer Pro")
-                            st.write("Upload an image to analyze its luminance (brightness) distribution with comprehensive statistical analysis.")
+                            st.markdown("""
+                            <style>
+                                .main-header {
+                                    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                                    padding: 2rem;
+                                    border-radius: 10px;
+                                    color: white;
+                                    text-align: center;
+                                    margin-bottom: 2rem;
+                                }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            # Header
+                            st.markdown("""
+                            <div class="main-header">
+                                <h1>🌟 Advanced Luminous Analyzer Pro</h1>
+                                <p>Upload an image to analyze its luminance (brightness) distribution with comprehensive statistical analysis.</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # st.title("🌟 Advanced Luminous Analyzer Pro")
+                            # st.write("Upload an image to analyze its luminance (brightness) distribution with comprehensive statistical analysis.")
 
                             with st.sidebar:
                                 st.markdown("---")
@@ -5198,52 +5354,55 @@ def main():
                                 st.info("👆 Please upload an image to begin analysis")
                                 
                                 # Show sample features
-                                st.markdown("### ✨ Features")
-                                feature_col1, feature_col2 = st.columns(2)
-                                
-                                with feature_col1:
-                                    st.markdown("""
-                                    **Analysis Options:**
-                                    - Multiple luminance calculation methods
-                                    - Automatic image resizing for performance
-                                    - Comprehensive statistical analysis
-                                    - Interactive threshold analysis
-                                    """)
-                                
-                                with feature_col2:
-                                    st.markdown("""
-                                    **Export Capabilities:**
-                                    - High-quality visualization downloads
-                                    - Statistical data in CSV format
-                                    - Detailed analysis reports
-                                    - Sample data for further analysis
-                                    """)
+                                with st.expander("✨ Features", expanded=False):
+                                # st.markdown("### ✨ Features")
+                                    feature_col1, feature_col2 = st.columns(2)
+                                    
+                                    with feature_col1:
+                                        st.markdown("""
+                                        **Analysis Options:**
+                                        - Multiple luminance calculation methods
+                                        - Automatic image resizing for performance
+                                        - Comprehensive statistical analysis
+                                        - Interactive threshold analysis
+                                        """)
+                                    
+                                    with feature_col2:
+                                        st.markdown("""
+                                        **Export Capabilities:**
+                                        - High-quality visualization downloads
+                                        - Statistical data in CSV format
+                                        - Detailed analysis reports
+                                        - Sample data for further analysis
+                                        """)
+                                st.markdown("---")
             
                 elif page1 == "PCA Analysis":
                     # Custom CSS for better styling
                     st.markdown("""
-                    <style>
-                        .main-header {
-                            font-size: 2.5rem;
-                            font-weight: bold;
-                            color: #1f77b4;
-                            text-align: center;
-                            margin-bottom: 1rem;
-                        }
-                        .metric-container {
-                            background-color: #f0f2f6;
-                            padding: 1rem;
-                            border-radius: 0.5rem;
-                            margin: 0.5rem 0;
-                        }
-                        .stProgress .st-bo {
-                            background-color: #1f77b4;
-                        }
-                    </style>
-                    """, unsafe_allow_html=True)
+                            <style>
+                                .main-header {
+                                    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                                    padding: 2rem;
+                                    border-radius: 10px;
+                                    color: white;
+                                    text-align: center;
+                                    margin-bottom: 2rem;
+                                }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            # Header
+                    st.markdown("""
+                            <div class="main-header">
+                                <h1>📷 Advanced PCA Image Analyzer</h1>
+                                <p>Analyze image compression and transformation using Principal Component Analysis (PCA) with advanced metrics and visualizations.</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                   
 
-                    st.markdown('<h1 class="main-header">📷 Advanced PCA Image Analyzer</h1>', unsafe_allow_html=True)
-                    st.markdown("Analyze image compression and transformation using **Principal Component Analysis (PCA)** with advanced metrics and visualizations.")
+                    # st.markdown('<h1 class="main-header">📷 Advanced PCA Image Analyzer</h1>', unsafe_allow_html=True)
+                    # st.markdown("Analyze image compression and transformation using **Principal Component Analysis (PCA)** with advanced metrics and visualizations.")
 
                     # File uploader
                     uploaded_file = st.file_uploader(
@@ -5541,40 +5700,63 @@ def main():
                         st.info("📁 Upload an image to begin PCA analysis.")
                         
                         # Show example information
-                        st.subheader("ℹ️ About PCA Image Analysis")
-                        st.markdown("""
-                        **Principal Component Analysis (PCA)** is a dimensionality reduction technique that can be used for image compression:
-                        
-                        - **How it works**: PCA finds the directions (principal components) of maximum variance in the data
-                        - **Image compression**: By keeping only the most important components, we can reconstruct images with fewer data
-                        - **Trade-off**: Fewer components = more compression but lower quality
-                        - **Applications**: Image compression, noise reduction, feature extraction
-                        
-                        **This tool analyzes each RGB channel separately** to provide detailed insights into how PCA affects different color components.
-                        """)
-                        
-                        st.subheader("🚀 Features")
-                        col1, col2 = st.columns(2)
-                        with col1:
+                        with st.expander("ℹ️ About PCA Image Analysis", expanded=False):
+                        # st.subheader("ℹ️ About PCA Image Analysis")
                             st.markdown("""
-                            **Analysis Options:**
-                            - Manual component selection
-                            - Variance threshold-based selection
-                            - Compression ratio-based selection
-                            - Quality metrics (PSNR, MSE)
+                            **Principal Component Analysis (PCA)** is a dimensionality reduction technique that can be used for image compression:
+                            
+                            - **How it works**: PCA finds the directions (principal components) of maximum variance in the data
+                            - **Image compression**: By keeping only the most important components, we can reconstruct images with fewer data
+                            - **Trade-off**: Fewer components = more compression but lower quality
+                            - **Applications**: Image compression, noise reduction, feature extraction
+                            
+                            **This tool analyzes each RGB channel separately** to provide detailed insights into how PCA affects different color components.
                             """)
-                        with col2:
-                            st.markdown("""
-                            **Visualizations:**
-                            - Variance analysis plots
-                            - Cumulative variance tracking
-                            - Difference visualization
-                            - Pixel intensity histograms
-                            """)
+                        
+                        with st.expander("🚀 Features", expanded=False):
+                        # st.subheader("🚀 Features")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("""
+                                **Analysis Options:**
+                                - Manual component selection
+                                - Variance threshold-based selection
+                                - Compression ratio-based selection
+                                - Quality metrics (PSNR, MSE)
+                                """)
+                            with col2:
+                                st.markdown("""
+                                **Visualizations:**
+                                - Variance analysis plots
+                                - Cumulative variance tracking
+                                - Difference visualization
+                                - Pixel intensity histograms
+                                """)
+                        st.markdown("---")
 
                 elif page1 == "Frequency Domain Analysis":
-                    st.title("📊 Advanced Image Frequency Domain Analysis")
-                    st.markdown("*Explore the frequency domain properties of your images with various filtering techniques*")
+                    st.markdown("""
+                            <style>
+                                .main-header {
+                                    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                                    padding: 2rem;
+                                    border-radius: 10px;
+                                    color: white;
+                                    text-align: center;
+                                    margin-bottom: 2rem;
+                                }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            # Header
+                    st.markdown("""
+                            <div class="main-header">
+                                <h1>📊 Advanced Image Frequency Domain Analysis</h1>
+                                <p>Explore the frequency domain properties of your images with various filtering techniques</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    # st.title("📊 Advanced Image Frequency Domain Analysis")
+                    # st.markdown("*Explore the frequency domain properties of your images with various filtering techniques*")
 
                     # Upload image
                     uploaded_file = st.file_uploader("Upload an image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
@@ -5829,23 +6011,45 @@ def main():
                         st.info("👆 Please upload an image to start the frequency domain analysis!")
                         
                         # Show example of what the tool can do
-                        st.subheader("🎯 What this tool does:")
-                        st.markdown("""
-                        - **FFT Analysis**: Converts images to frequency domain using Fast Fourier Transform
-                        - **Multiple Filters**: Apply various frequency filters (Low-pass, High-pass, Band-pass, etc.)
-                        - **Real-time Visualization**: See immediate results of filter applications
-                        - **Advanced Analysis**: Examine phase spectra, frequency profiles, and filter responses
-                        - **Quality Metrics**: Calculate MSE and PSNR to evaluate filtering effects
-                        
-                        **Use Cases:**
-                        - Noise reduction (low-pass filtering)
-                        - Edge enhancement (high-pass filtering)  
-                        - Feature extraction and analysis
-                        - Understanding image frequency characteristics
-                        """)
+                        with st.expander("What this tool does:", expanded=False):
+                        # st.subheader("🎯What this tool does:")
+                            st.markdown("""
+                            - **FFT Analysis**: Converts images to frequency domain using Fast Fourier Transform
+                            - **Multiple Filters**: Apply various frequency filters (Low-pass, High-pass, Band-pass, etc.)
+                            - **Real-time Visualization**: See immediate results of filter applications
+                            - **Advanced Analysis**: Examine phase spectra, frequency profiles, and filter responses
+                            - **Quality Metrics**: Calculate MSE and PSNR to evaluate filtering effects
+                            
+                            **Use Cases:**
+                            - Noise reduction (low-pass filtering)
+                            - Edge enhancement (high-pass filtering)  
+                            - Feature extraction and analysis
+                            - Understanding image frequency characteristics
+                            """)
+                        st.markdown("---")
 
                 elif page1 == "Statistical Analysis":
-                    st.title("📊 Advanced Image Statistical Analysis")
+                    st.markdown("""
+                            <style>
+                                .main-header {
+                                    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                                    padding: 2rem;
+                                    border-radius: 10px;
+                                    color: white;
+                                    text-align: center;
+                                    margin-bottom: 2rem;
+                                }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            # Header
+                    st.markdown("""
+                            <div class="main-header">
+                                <h1>📊 Advanced Image Statistical Analysis</h1>
+                                <p>Explore the frequency domain properties of your images with various filtering techniques</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    # st.title("📊 Advanced Image Statistical Analysis")
 
                     uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png", "bmp", "tiff", "webp"])
 
@@ -6158,18 +6362,17 @@ def main():
 
                     else:
                         st.info("👆 Upload an image to begin analysis")
-                        st.markdown("""
-                        ### Features:
-                        - 📊 Comprehensive statistical metrics for each color channel
-                        - 🎨 Dominant color extraction and analysis
-                        - 📈 Multiple visualization types (histograms, scatter plots, KDE)
-                        - 🔗 Channel correlation analysis
-                        - 🔬 Advanced image quality metrics
-                        - 💾 Exportable analysis reports
-                        
-                        ### Supported formats:
-                        JPG, JPEG, PNG, BMP, TIFF, WebP
-                        """)
+                        with st.expander("Features:", expanded=False):
+                            st.markdown("""
+                            - 📊 Comprehensive statistical metrics for each color channel
+                            - 🎨 Dominant color extraction and analysis
+                            - 📈 Multiple visualization types (histograms, scatter plots, KDE)
+                            - 🔗 Channel correlation analysis
+                            - 🔬 Advanced image quality metrics
+                            - 💾 Exportable analysis reports
+                            
+                            """)
+                        st.markdown("---")
 
 
 if __name__ == "__main__":
