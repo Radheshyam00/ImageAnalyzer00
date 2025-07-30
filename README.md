@@ -1,4 +1,4 @@
-# 🔍 Advanced Image Metadata & Security Analyzer
+# Advanced Image Metadata & Security Analyzer(AIMSA)
 
 ## Overview
 
