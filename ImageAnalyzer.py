@@ -5631,6 +5631,7 @@ def main():
                             image_np = np.array(image)
                         
                         # Display original image info
+                        st.markdown("---")
                         st.subheader("📊 Image Information")
                         col1, col2, col3, col4 = st.columns(4)
                         with col1:
@@ -5729,80 +5730,87 @@ def main():
                             status_text.empty()
                             
                             # Display results
+                            st.markdown("---")
                             st.subheader("🔍 Results")
                             
+                            
                             # Basic comparison
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.markdown("**Original Image**")
-                                st.image(image_np, use_column_width=True)
-                            with col2:
-                                st.markdown(f"**PCA Reconstructed ({n_components} components)**")
-                                st.image(reconstructed_image, use_column_width=True)
+                            with st.expander("PCA Reconstructed", expanded=False):
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("**Original Image**")
+                                    st.image(image_np, use_column_width=True)
+                                with col2:
+                                    st.markdown(f"**PCA Reconstructed ({n_components} components)**")
+                                    st.image(reconstructed_image, use_column_width=True)
                             
                             # Quality metrics
                             if show_metrics:
-                                st.subheader("📊 Quality Metrics")
+                                with st.expander("Quality Metrics", expanded=False):
+                                # st.subheader("📊 Quality Metrics")
                                 
-                                # Calculate metrics for each channel
-                                R_metrics = calculate_compression_metrics(R, R_reconstructed, n_components, max_components)
-                                G_metrics = calculate_compression_metrics(G, G_reconstructed, n_components, max_components)
-                                B_metrics = calculate_compression_metrics(B, B_reconstructed, n_components, max_components)
-                                
-                                # Overall metrics
-                                overall_metrics = calculate_compression_metrics(image_np, reconstructed_image, n_components, max_components)
-                                
-                                col1, col2, col3, col4 = st.columns(4)
-                                with col1:
-                                    st.metric("Compression Ratio", f"{overall_metrics['compression_ratio']:.1f}:1")
-                                with col2:
-                                    st.metric("Data Retention", f"{overall_metrics['data_retention']:.1f}%")
-                                with col3:
-                                    st.metric("PSNR", f"{overall_metrics['psnr']:.2f} dB")
-                                with col4:
-                                    st.metric("MSE", f"{overall_metrics['mse']:.2f}")
-                                
-                                # Channel-wise metrics table
-                                st.markdown("**Channel-wise Metrics**")
-                                metrics_data = {
-                                    'Channel': ['Red', 'Green', 'Blue'],
-                                    'MSE': [f"{R_metrics['mse']:.2f}", f"{G_metrics['mse']:.2f}", f"{B_metrics['mse']:.2f}"],
-                                    'PSNR (dB)': [f"{R_metrics['psnr']:.2f}", f"{G_metrics['psnr']:.2f}", f"{B_metrics['psnr']:.2f}"],
-                                    'Variance Explained': [f"{sum(R_var):.1%}", f"{sum(G_var):.1%}", f"{sum(B_var):.1%}"]
-                                }
-                                st.table(metrics_data)
+                                    # Calculate metrics for each channel
+                                    R_metrics = calculate_compression_metrics(R, R_reconstructed, n_components, max_components)
+                                    G_metrics = calculate_compression_metrics(G, G_reconstructed, n_components, max_components)
+                                    B_metrics = calculate_compression_metrics(B, B_reconstructed, n_components, max_components)
+                                    
+                                    # Overall metrics
+                                    overall_metrics = calculate_compression_metrics(image_np, reconstructed_image, n_components, max_components)
+                                    
+                                    col1, col2, col3, col4 = st.columns(4)
+                                    with col1:
+                                        st.metric("Compression Ratio", f"{overall_metrics['compression_ratio']:.1f}:1")
+                                    with col2:
+                                        st.metric("Data Retention", f"{overall_metrics['data_retention']:.1f}%")
+                                    with col3:
+                                        st.metric("PSNR", f"{overall_metrics['psnr']:.2f} dB")
+                                    with col4:
+                                        st.metric("MSE", f"{overall_metrics['mse']:.2f}")
+                                    
+                                    # Channel-wise metrics table
+                                    st.markdown("**Channel-wise Metrics**")
+                                    metrics_data = {
+                                        'Channel': ['Red', 'Green', 'Blue'],
+                                        'MSE': [f"{R_metrics['mse']:.2f}", f"{G_metrics['mse']:.2f}", f"{B_metrics['mse']:.2f}"],
+                                        'PSNR (dB)': [f"{R_metrics['psnr']:.2f}", f"{G_metrics['psnr']:.2f}", f"{B_metrics['psnr']:.2f}"],
+                                        'Variance Explained': [f"{sum(R_var):.1%}", f"{sum(G_var):.1%}", f"{sum(B_var):.1%}"]
+                                    }
+                                    st.table(metrics_data)
                             
                             # Variance analysis
                             if show_variance_plot:
-                                st.subheader("📈 Variance Analysis")
-                                variance_ratios = [R_var, G_var, B_var]
-                                channel_names = ['Red', 'Green', 'Blue']
-                                colors = ['red', 'green', 'blue']
-                                
-                                fig = plot_cumulative_variance(variance_ratios, channel_names, colors)
-                                st.pyplot(fig)
-                                
-                                # Components needed for different variance thresholds
-                                st.markdown("**Components needed for variance thresholds:**")
-                                for threshold in [0.8, 0.9, 0.95, 0.99]:
-                                    components_needed = []
-                                    for var_ratio in variance_ratios:
-                                        cumsum = np.cumsum(var_ratio)
-                                        needed = np.argmax(cumsum >= threshold) + 1
-                                        components_needed.append(needed)
+                                with st.expander("Variance Analysis", expanded=False):
+                                    # st.subheader("📈 Variance Analysis")
+                                    variance_ratios = [R_var, G_var, B_var]
+                                    channel_names = ['Red', 'Green', 'Blue']
+                                    colors = ['red', 'green', 'blue']
                                     
-                                    avg_needed = int(np.mean(components_needed))
-                                    st.write(f"- {threshold:.0%} variance: ~{avg_needed} components (R:{components_needed[0]}, G:{components_needed[1]}, B:{components_needed[2]})")
-                            
+                                    fig = plot_cumulative_variance(variance_ratios, channel_names, colors)
+                                    st.pyplot(fig)
+                                    
+                                    # Components needed for different variance thresholds
+                                    st.markdown("**Components needed for variance thresholds:**")
+                                    for threshold in [0.8, 0.9, 0.95, 0.99]:
+                                        components_needed = []
+                                        for var_ratio in variance_ratios:
+                                            cumsum = np.cumsum(var_ratio)
+                                            needed = np.argmax(cumsum >= threshold) + 1
+                                            components_needed.append(needed)
+                                        
+                                        avg_needed = int(np.mean(components_needed))
+                                        st.write(f"- {threshold:.0%} variance: ~{avg_needed} components (R:{components_needed[0]}, G:{components_needed[1]}, B:{components_needed[2]})")
+                                
                             # Detailed comparison
                             if show_comparison_grid:
-                                st.subheader("🔬 Detailed Comparison")
-                                fig = create_comparison_grid(image_np, reconstructed_image, n_components)
-                                st.pyplot(fig)
+                                with st.expander("Detailed Comparison", expanded=False):
+                                    # st.subheader("🔬 Detailed Comparison")
+                                    fig = create_comparison_grid(image_np, reconstructed_image, n_components)
+                                    st.pyplot(fig)
                             
                             st.success("✅ PCA Analysis Completed Successfully!")
                             
                             # Download option
+                            st.markdown("---")
                             st.subheader("💾 Download Results")
                             if st.button("Prepare Download"):
                                 reconstructed_pil = Image.fromarray(reconstructed_image)
@@ -5812,6 +5820,7 @@ def main():
                                     file_name=f"pca_reconstructed_{n_components}_components.png",
                                     mime="image/png"
                                 )
+                            st.markdown("---")
 
                     else:
                         st.info("📁 Upload an image to begin PCA analysis.")
@@ -5885,35 +5894,50 @@ def main():
                         
                         # Normalize image for better processing
                         img_array = img_array.astype(np.float32) / 255.0
-                        
+
+                        st.markdown("---")
+                        with st.expander("Image Statistics"):
+                            # st.subheader("🧮 Image Statistics")
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                st.metric(label="📐 Dimensions", value=f"{img_array.shape[1]} × {img_array.shape[0]} px")
+                                st.metric(label="🔢 Mean Intensity", value=f"{np.mean(img_array):.3f}")
+
+                            with col2:
+                                st.metric(label="📊 Std Deviation", value=f"{np.std(img_array):.3f}")
+                                st.metric(label="📈 Min / Max", value=f"{np.min(img_array):.3f} / {np.max(img_array):.3f}")
+
                         # Main layout
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.subheader("📷 Original Image")
-                            st.image(image, caption="Grayscale Image", use_column_width=True)
+                            with st.expander("Grayscale Image", expanded=False):
+                            # st.subheader("📷 Original Image")
+                                st.image(image, caption="Grayscale Image", use_column_width=True)
                             
                             # Image statistics
-                            with st.expander("📊 Image Statistics"):
-                                st.write(f"**Dimensions:** {img_array.shape[1]} × {img_array.shape[0]} pixels")
-                                st.write(f"**Mean Intensity:** {np.mean(img_array):.3f}")
-                                st.write(f"**Standard Deviation:** {np.std(img_array):.3f}")
-                                st.write(f"**Min/Max Values:** {np.min(img_array):.3f} / {np.max(img_array):.3f}")
+                            # with st.expander("📊 Image Statistics"):
+                                # st.write(f"**Dimensions:** {img_array.shape[1]} × {img_array.shape[0]} pixels")
+                                # st.write(f"**Mean Intensity:** {np.mean(img_array):.3f}")
+                                # st.write(f"**Standard Deviation:** {np.std(img_array):.3f}")
+                                # st.write(f"**Min/Max Values:** {np.min(img_array):.3f} / {np.max(img_array):.3f}")
 
                         with col2:
-                            st.subheader("🔍 FFT Magnitude Spectrum")
+                            with st.expander("FFT Magnitude Spectrum", expanded=False):
+                            # st.subheader("🔍 FFT Magnitude Spectrum")
                             
-                            # Compute FFT
-                            f = np.fft.fft2(img_array)
-                            fshift = np.fft.fftshift(f)
-                            magnitude_spectrum = 20 * np.log(np.abs(fshift) + 1e-10)  # Add small value to avoid log(0)
+                                # Compute FFT
+                                f = np.fft.fft2(img_array)
+                                fshift = np.fft.fftshift(f)
+                                magnitude_spectrum = 20 * np.log(np.abs(fshift) + 1e-10)  # Add small value to avoid log(0)
 
-                            fig, ax = plt.subplots(figsize=(6, 6))
-                            im = ax.imshow(magnitude_spectrum, cmap="hot", aspect='equal')
-                            ax.set_title("Log Magnitude Spectrum", fontsize=12)
-                            ax.axis("off")
-                            plt.colorbar(im, ax=ax, shrink=0.8)
-                            st.pyplot(fig)
+                                fig, ax = plt.subplots(figsize=(6, 6))
+                                im = ax.imshow(magnitude_spectrum, cmap="hot", aspect='equal')
+                                ax.set_title("Log Magnitude Spectrum", fontsize=12)
+                                ax.axis("off")
+                                plt.colorbar(im, ax=ax, shrink=0.8)
+                                st.pyplot(fig)
 
                         with st.sidebar:
                             st.markdown("---")
@@ -5969,72 +5993,84 @@ def main():
                         img_back = np.abs(img_back)
 
                         # Display results
-                        st.subheader(f"🧪 Results: {filter_type} Filter")
+                        with st.expander("Results", expanded=False):
+                            st.subheader(f"{filter_type} Filter")
                         
-                        col3, col4, col5 = st.columns(3)
-                        
-                        with col3:
-                            st.write("**Filter Mask**")
-                            fig, ax = plt.subplots(figsize=(5, 5))
-                            im = ax.imshow(mask, cmap="viridis", aspect='equal')
-                            ax.set_title("Filter Mask")
-                            ax.axis("off")
-                            plt.colorbar(im, ax=ax, shrink=0.8)
-                            st.pyplot(fig)
-                        
-                        with col4:
-                            st.write("**Filtered Spectrum**")
-                            filtered_magnitude = 20 * np.log(np.abs(fshift_filtered) + 1e-10)
-                            fig, ax = plt.subplots(figsize=(5, 5))
-                            im = ax.imshow(filtered_magnitude, cmap="hot", aspect='equal')
-                            ax.set_title("Filtered Spectrum")
-                            ax.axis("off")
-                            plt.colorbar(im, ax=ax, shrink=0.8)
-                            st.pyplot(fig)
-                        
-                        with col5:
-                            st.write("**Filtered Image**")
-                            fig, ax = plt.subplots(figsize=(5, 5))
-                            ax.imshow(img_back, cmap="gray", aspect='equal')
-                            ax.set_title("Reconstructed Image")
-                            ax.axis("off")
-                            st.pyplot(fig)
+                            col3, col4, col5 = st.columns(3)
+                            
+                            with col3:
+                                st.write("**Filter Mask**")
+                                fig, ax = plt.subplots(figsize=(5, 5))
+                                im = ax.imshow(mask, cmap="viridis", aspect='equal')
+                                ax.set_title("Filter Mask")
+                                ax.axis("off")
+                                plt.colorbar(im, ax=ax, shrink=0.8)
+                                st.pyplot(fig)
+                            
+                            with col4:
+                                st.write("**Filtered Spectrum**")
+                                filtered_magnitude = 20 * np.log(np.abs(fshift_filtered) + 1e-10)
+                                fig, ax = plt.subplots(figsize=(5, 5))
+                                im = ax.imshow(filtered_magnitude, cmap="hot", aspect='equal')
+                                ax.set_title("Filtered Spectrum")
+                                ax.axis("off")
+                                plt.colorbar(im, ax=ax, shrink=0.8)
+                                st.pyplot(fig)
+                            
+                            with col5:
+                                st.write("**Filtered Image**")
+                                fig, ax = plt.subplots(figsize=(5, 5))
+                                ax.imshow(img_back, cmap="gray", aspect='equal')
+                                ax.set_title("Reconstructed Image")
+                                ax.axis("off")
+                                st.pyplot(fig)
 
                         # Comparison section
-                        st.subheader("📈 Before vs After Comparison")
+                        with st.expander("Before vs After Comparison", expanded=False):
+                        # st.subheader("📈 Before vs After Comparison")
                         
-                        comparison_col1, comparison_col2 = st.columns(2)
-                        
-                        with comparison_col1:
-                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+                            comparison_col1, comparison_col2 = st.columns(2)
                             
-                            ax1.imshow(img_array, cmap="gray")
-                            ax1.set_title("Original Image")
-                            ax1.axis("off")
+                            with comparison_col1:
+                                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+                                
+                                ax1.imshow(img_array, cmap="gray")
+                                ax1.set_title("Original Image")
+                                ax1.axis("off")
+                                
+                                ax2.imshow(img_back, cmap="gray")
+                                ax2.set_title("Filtered Image")
+                                ax2.axis("off")
+                                
+                                plt.tight_layout()
+                                st.pyplot(fig)
                             
-                            ax2.imshow(img_back, cmap="gray")
-                            ax2.set_title("Filtered Image")
-                            ax2.axis("off")
-                            
-                            plt.tight_layout()
-                            st.pyplot(fig)
-                        
-                        with comparison_col2:
-                            # Difference image
-                            difference = np.abs(img_array - img_back)
-                            fig, ax = plt.subplots(figsize=(5, 4))
-                            im = ax.imshow(difference, cmap="hot")
-                            ax.set_title("Difference Image")
-                            ax.axis("off")
-                            plt.colorbar(im, ax=ax, shrink=0.8)
-                            st.pyplot(fig)
-                            
-                            # Metrics
-                            st.write("**Quality Metrics:**")
-                            mse = np.mean((img_array - img_back)**2)
-                            psnr = 20 * np.log10(1.0 / np.sqrt(mse)) if mse > 0 else float('inf')
-                            st.write(f"MSE: {mse:.6f}")
-                            st.write(f"PSNR: {psnr:.2f} dB")
+                            with comparison_col2:
+                                # Difference image
+                                difference = np.abs(img_array - img_back)
+                                fig, ax = plt.subplots(figsize=(5, 4))
+                                im = ax.imshow(difference, cmap="hot")
+                                ax.set_title("Difference Image")
+                                ax.axis("off")
+                                plt.colorbar(im, ax=ax, shrink=0.8)
+                                st.pyplot(fig)
+                                
+                                # Metrics
+                                st.subheader("📊 Quality Metrics")
+                                mse = np.mean((img_array - img_back)**2)
+                                psnr = 20 * np.log10(1.0 / np.sqrt(mse)) if mse > 0 else float('inf')
+                                col1, col2 = st.columns(2)
+
+                                with col1:
+                                    st.metric(label="🔻 MSE (Mean Squared Error)", value=f"{mse:.6f}")
+
+                                with col2:
+                                    st.metric(label="📈 PSNR (Peak Signal-to-Noise Ratio)", value=f"{psnr:.2f} dB")
+                                # st.write("**Quality Metrics:**")
+                                # mse = np.mean((img_array - img_back)**2)
+                                # psnr = 20 * np.log10(1.0 / np.sqrt(mse)) if mse > 0 else float('inf')
+                                # st.write(f"MSE: {mse:.6f}")
+                                # st.write(f"PSNR: {psnr:.2f} dB")
 
                         # Advanced analysis
                         with st.expander("🔬 Advanced Analysis"):
@@ -6113,6 +6149,7 @@ def main():
                                 st.pyplot(fig)
 
                         # Export options
+                        st.markdown("---")
                         st.header("💾 Export Options")
                         
                         if st.button("Download Filtered Image"):
@@ -6123,7 +6160,7 @@ def main():
                             # Note: In a real Streamlit app, you'd use st.download_button here
                             st.success("Image ready for download!")
                             st.info("In a full Streamlit deployment, this would trigger a download.")
-
+                        st.markdown("---")
                     else:
                         st.info("👆 Please upload an image to start the frequency domain analysis!")
                         
@@ -6175,17 +6212,29 @@ def main():
                         img_array = np.array(image)
 
                         # Display basic image info
+                        st.markdown("---")
+                        st.subheader("🖼️ Image Properties")
                         col1, col2 = st.columns(2)
-                        with col1:
-                            st.image(image, caption="Uploaded Image", use_column_width=True)
-                        
-                        with col2:
-                            st.subheader("Image Properties")
-                            st.write(f"**Dimensions**: {img_array.shape[1]} × {img_array.shape[0]} pixels")
-                            st.write(f"**Total Pixels**: {img_array.shape[0] * img_array.shape[1]:,}")
-                            st.write(f"**Channels**: {img_array.shape[2]}")
-                            st.write(f"**File Size**: {len(uploaded_file.getvalue()) / 1024:.1f} KB")
 
+                        with col1:
+                            st.metric(label="📐 Dimensions", value=f"{img_array.shape[1]} × {img_array.shape[0]} px")
+                            st.metric(label="🔢 Total Pixels", value=f"{img_array.shape[0] * img_array.shape[1]:,}")
+
+                        with col2:
+                            st.metric(label="🌈 Channels", value=f"{img_array.shape[2]}")
+                            st.metric(label="💾 File Size", value=f"{len(uploaded_file.getvalue()) / 1024:.1f} KB")
+
+                        # col1, col2 = st.columns(2)
+                        # with col1:
+                        #     st.image(image, caption="Uploaded Image", use_column_width=True)
+                        
+                        # with col2:
+                        #     st.subheader("Image Properties")
+                        #     st.write(f"**Dimensions**: {img_array.shape[1]} × {img_array.shape[0]} pixels")
+                        #     st.write(f"**Total Pixels**: {img_array.shape[0] * img_array.shape[1]:,}")
+                        #     st.write(f"**Channels**: {img_array.shape[2]}")
+                        #     st.write(f"**File Size**: {len(uploaded_file.getvalue()) / 1024:.1f} KB")
+                        st.markdown("---")
                         st.header("🧮 Statistical Metrics")
                         r, g, b = img_array[:,:,0], img_array[:,:,1], img_array[:,:,2]
                         gray = np.mean(img_array, axis=2).astype(np.uint8)
@@ -6228,220 +6277,226 @@ def main():
                         calc_stats(gray, "Grayscale")
 
                         # Color Analysis
+                        st.markdown("---")
                         st.header("🎨 Color Analysis")
+                        with st.expander("Dominant Colors and Color Temperature Analysis", expanded=False):
                         
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.subheader("Dominant Colors")
-                            # Extract dominant colors using K-means
-                            pixels = img_array.reshape(-1, 3)
-                            n_colors = st.slider("Number of dominant colors", 2, 10, 5)
-                            
-                            kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init=10)
-                            kmeans.fit(pixels)
-                            colors = kmeans.cluster_centers_.astype(int)
-                            
-                            # Create color palette
-                            fig_palette, ax_palette = plt.subplots(figsize=(8, 2))
-                            ax_palette.imshow([colors], aspect='auto')
-                            ax_palette.set_xticks(range(n_colors))
-                            ax_palette.set_xticklabels([f'RGB({c[0]},{c[1]},{c[2]})' for c in colors], rotation=45)
-                            ax_palette.set_yticks([])
-                            ax_palette.set_title("Dominant Colors")
-                            st.pyplot(fig_palette)
-                        
-                        with col2:
-                            st.subheader("Color Temperature Analysis")
-                            # Calculate color temperature metrics
-                            avg_rgb = np.mean(pixels, axis=0)
-                            
-                            # Warmth index (more red/yellow vs blue)
-                            warmth = (avg_rgb[0] + avg_rgb[1]) / (2 * avg_rgb[2]) if avg_rgb[2] > 0 else float('inf')
-                            
-                            # Saturation (deviation from grayscale)
-                            saturation = np.std(avg_rgb) / np.mean(avg_rgb) if np.mean(avg_rgb) > 0 else 0
-                            
-                            st.metric("Warmth Index", f"{warmth:.3f}", help="Higher values indicate warmer colors")
-                            st.metric("Saturation Index", f"{saturation:.3f}", help="Higher values indicate more colorful image")
-                            st.metric("Brightness", f"{np.mean(gray):.1f}/255", help="Average brightness level")
-
-                        st.header("📈 Advanced Visualizations")
-
-                        # Create tabs for different visualizations
-                        tab1, tab2, tab3, tab4 = st.tabs(["Histograms", "2D Histograms", "Scatter Plots", "Distribution Analysis"])
-                        
-                        with tab1:
-                            fig, axs = plt.subplots(2, 2, figsize=(14, 10))
-
-                            # Grayscale histogram
-                            axs[0,0].hist(gray.ravel(), bins=256, color='gray', alpha=0.7)
-                            axs[0,0].set_title("Grayscale Histogram")
-                            axs[0,0].set_xlabel("Pixel Value")
-                            axs[0,0].set_ylabel("Frequency")
-                            axs[0,0].grid(True, alpha=0.3)
-
-                            # Color histogram
-                            axs[0,1].hist(r.ravel(), bins=256, color='red', alpha=0.5, label='Red')
-                            axs[0,1].hist(g.ravel(), bins=256, color='green', alpha=0.5, label='Green')
-                            axs[0,1].hist(b.ravel(), bins=256, color='blue', alpha=0.5, label='Blue')
-                            axs[0,1].set_title("RGB Histogram")
-                            axs[0,1].set_xlabel("Pixel Value")
-                            axs[0,1].set_ylabel("Frequency")
-                            axs[0,1].legend()
-                            axs[0,1].grid(True, alpha=0.3)
-
-                            # Cumulative histogram
-                            axs[1,0].hist(gray.ravel(), bins=256, cumulative=True, color='gray', alpha=0.7)
-                            axs[1,0].set_title("Cumulative Histogram")
-                            axs[1,0].set_xlabel("Pixel Value")
-                            axs[1,0].set_ylabel("Cumulative Frequency")
-                            axs[1,0].grid(True, alpha=0.3)
-
-                            # Log histogram
-                            counts, bins = np.histogram(gray.ravel(), bins=256)
-                            axs[1,1].bar(bins[:-1], np.log(counts + 1), width=1, color='gray', alpha=0.7)
-                            axs[1,1].set_title("Log Histogram")
-                            axs[1,1].set_xlabel("Pixel Value")
-                            axs[1,1].set_ylabel("Log(Frequency)")
-                            axs[1,1].grid(True, alpha=0.3)
-
-                            plt.tight_layout()
-                            st.pyplot(fig)
-                        
-                        with tab2:
-                            fig_2d, axs_2d = plt.subplots(1, 3, figsize=(15, 5))
-                            
-                            # RGB 2D histograms
-                            axs_2d[0].hist2d(r.ravel(), g.ravel(), bins=50, cmap='Reds')
-                            axs_2d[0].set_title("Red vs Green")
-                            axs_2d[0].set_xlabel("Red Channel")
-                            axs_2d[0].set_ylabel("Green Channel")
-                            
-                            axs_2d[1].hist2d(r.ravel(), b.ravel(), bins=50, cmap='Blues')
-                            axs_2d[1].set_title("Red vs Blue")
-                            axs_2d[1].set_xlabel("Red Channel")
-                            axs_2d[1].set_ylabel("Blue Channel")
-                            
-                            axs_2d[2].hist2d(g.ravel(), b.ravel(), bins=50, cmap='Greens')
-                            axs_2d[2].set_title("Green vs Blue")
-                            axs_2d[2].set_xlabel("Green Channel")
-                            axs_2d[2].set_ylabel("Blue Channel")
-                            
-                            plt.tight_layout()
-                            st.pyplot(fig_2d)
-                        
-                        with tab3:
-                            # Scatter plots with correlation
-                            fig_scatter, axs_scatter = plt.subplots(1, 3, figsize=(15, 5))
-                            
-                            # Sample data for performance (use every nth pixel)
-                            step = max(1, len(pixels) // 10000)  # Limit to ~10k points
-                            sample_pixels = pixels[::step]
-                            
-                            corr_rg = pearsonr(sample_pixels[:, 0], sample_pixels[:, 1])[0]
-                            corr_rb = pearsonr(sample_pixels[:, 0], sample_pixels[:, 2])[0]
-                            corr_gb = pearsonr(sample_pixels[:, 1], sample_pixels[:, 2])[0]
-                            
-                            axs_scatter[0].scatter(sample_pixels[:, 0], sample_pixels[:, 1], alpha=0.1, s=1)
-                            axs_scatter[0].set_title(f"Red vs Green (r={corr_rg:.3f})")
-                            axs_scatter[0].set_xlabel("Red")
-                            axs_scatter[0].set_ylabel("Green")
-                            
-                            axs_scatter[1].scatter(sample_pixels[:, 0], sample_pixels[:, 2], alpha=0.1, s=1)
-                            axs_scatter[1].set_title(f"Red vs Blue (r={corr_rb:.3f})")
-                            axs_scatter[1].set_xlabel("Red")
-                            axs_scatter[1].set_ylabel("Blue")
-                            
-                            axs_scatter[2].scatter(sample_pixels[:, 1], sample_pixels[:, 2], alpha=0.1, s=1)
-                            axs_scatter[2].set_title(f"Green vs Blue (r={corr_gb:.3f})")
-                            axs_scatter[2].set_xlabel("Green")
-                            axs_scatter[2].set_ylabel("Blue")
-                            
-                            plt.tight_layout()
-                            st.pyplot(fig_scatter)
-                        
-                        with tab4:
                             col1, col2 = st.columns(2)
                             
                             with col1:
-                                # Channel correlation heatmap
-                                st.subheader("Channel Correlation Matrix")
-                                flat_rgb = img_array.reshape(-1, 3)
-                                corr_matrix = np.corrcoef(flat_rgb.T)
+                                st.subheader("Dominant Colors")
+                                # Extract dominant colors using K-means
+                                pixels = img_array.reshape(-1, 3)
+                                n_colors = st.slider("Number of dominant colors", 2, 10, 5)
                                 
-                                fig_corr, ax_corr = plt.subplots(figsize=(6, 4))
-                                sns.heatmap(corr_matrix, annot=True, fmt=".3f", 
-                                        xticklabels=["Red", "Green", "Blue"], 
-                                        yticklabels=["Red", "Green", "Blue"], 
-                                        ax=ax_corr, cmap='coolwarm', center=0)
-                                ax_corr.set_title("RGB Channel Correlations")
-                                st.pyplot(fig_corr)
+                                kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init=10)
+                                kmeans.fit(pixels)
+                                colors = kmeans.cluster_centers_.astype(int)
+                                
+                                # Create color palette
+                                fig_palette, ax_palette = plt.subplots(figsize=(8, 2))
+                                ax_palette.imshow([colors], aspect='auto')
+                                ax_palette.set_xticks(range(n_colors))
+                                ax_palette.set_xticklabels([f'RGB({c[0]},{c[1]},{c[2]})' for c in colors], rotation=45)
+                                ax_palette.set_yticks([])
+                                ax_palette.set_title("Dominant Colors")
+                                st.pyplot(fig_palette)
                             
                             with col2:
-                                # KDE distribution plot
-                                st.subheader("Intensity Distribution (KDE)")
-                                fig_kde, ax_kde = plt.subplots(figsize=(6, 4))
-                                sns.kdeplot(data=r.flatten(), color="red", label="Red", ax=ax_kde, alpha=0.7)
-                                sns.kdeplot(data=g.flatten(), color="green", label="Green", ax=ax_kde, alpha=0.7)
-                                sns.kdeplot(data=b.flatten(), color="blue", label="Blue", ax=ax_kde, alpha=0.7)
-                                sns.kdeplot(data=gray.flatten(), color="black", label="Grayscale", ax=ax_kde, alpha=0.7)
-                                ax_kde.set_title("Pixel Intensity Distribution")
-                                ax_kde.set_xlabel("Pixel Value")
-                                ax_kde.set_ylabel("Density")
-                                ax_kde.legend()
-                                st.pyplot(fig_kde)
+                                st.subheader("Color Temperature Analysis")
+                                # Calculate color temperature metrics
+                                avg_rgb = np.mean(pixels, axis=0)
+                                
+                                # Warmth index (more red/yellow vs blue)
+                                warmth = (avg_rgb[0] + avg_rgb[1]) / (2 * avg_rgb[2]) if avg_rgb[2] > 0 else float('inf')
+                                
+                                # Saturation (deviation from grayscale)
+                                saturation = np.std(avg_rgb) / np.mean(avg_rgb) if np.mean(avg_rgb) > 0 else 0
+                                
+                                st.metric("Warmth Index", f"{warmth:.3f}", help="Higher values indicate warmer colors")
+                                st.metric("Saturation Index", f"{saturation:.3f}", help="Higher values indicate more colorful image")
+                                st.metric("Brightness", f"{np.mean(gray):.1f}/255", help="Average brightness level")
+                        st.markdown("---")
+                        st.header("📈 Advanced Visualizations")
+                        with st.expander("Advanced Visualizations", expanded=False):
+
+                            # Create tabs for different visualizations
+                            tab1, tab2, tab3, tab4 = st.tabs(["Histograms", "2D Histograms", "Scatter Plots", "Distribution Analysis"])
+                            
+                            with tab1:
+                                fig, axs = plt.subplots(2, 2, figsize=(14, 10))
+
+                                # Grayscale histogram
+                                axs[0,0].hist(gray.ravel(), bins=256, color='gray', alpha=0.7)
+                                axs[0,0].set_title("Grayscale Histogram")
+                                axs[0,0].set_xlabel("Pixel Value")
+                                axs[0,0].set_ylabel("Frequency")
+                                axs[0,0].grid(True, alpha=0.3)
+
+                                # Color histogram
+                                axs[0,1].hist(r.ravel(), bins=256, color='red', alpha=0.5, label='Red')
+                                axs[0,1].hist(g.ravel(), bins=256, color='green', alpha=0.5, label='Green')
+                                axs[0,1].hist(b.ravel(), bins=256, color='blue', alpha=0.5, label='Blue')
+                                axs[0,1].set_title("RGB Histogram")
+                                axs[0,1].set_xlabel("Pixel Value")
+                                axs[0,1].set_ylabel("Frequency")
+                                axs[0,1].legend()
+                                axs[0,1].grid(True, alpha=0.3)
+
+                                # Cumulative histogram
+                                axs[1,0].hist(gray.ravel(), bins=256, cumulative=True, color='gray', alpha=0.7)
+                                axs[1,0].set_title("Cumulative Histogram")
+                                axs[1,0].set_xlabel("Pixel Value")
+                                axs[1,0].set_ylabel("Cumulative Frequency")
+                                axs[1,0].grid(True, alpha=0.3)
+
+                                # Log histogram
+                                counts, bins = np.histogram(gray.ravel(), bins=256)
+                                axs[1,1].bar(bins[:-1], np.log(counts + 1), width=1, color='gray', alpha=0.7)
+                                axs[1,1].set_title("Log Histogram")
+                                axs[1,1].set_xlabel("Pixel Value")
+                                axs[1,1].set_ylabel("Log(Frequency)")
+                                axs[1,1].grid(True, alpha=0.3)
+
+                                plt.tight_layout()
+                                st.pyplot(fig)
+                            
+                            with tab2:
+                                fig_2d, axs_2d = plt.subplots(1, 3, figsize=(15, 5))
+                                
+                                # RGB 2D histograms
+                                axs_2d[0].hist2d(r.ravel(), g.ravel(), bins=50, cmap='Reds')
+                                axs_2d[0].set_title("Red vs Green")
+                                axs_2d[0].set_xlabel("Red Channel")
+                                axs_2d[0].set_ylabel("Green Channel")
+                                
+                                axs_2d[1].hist2d(r.ravel(), b.ravel(), bins=50, cmap='Blues')
+                                axs_2d[1].set_title("Red vs Blue")
+                                axs_2d[1].set_xlabel("Red Channel")
+                                axs_2d[1].set_ylabel("Blue Channel")
+                                
+                                axs_2d[2].hist2d(g.ravel(), b.ravel(), bins=50, cmap='Greens')
+                                axs_2d[2].set_title("Green vs Blue")
+                                axs_2d[2].set_xlabel("Green Channel")
+                                axs_2d[2].set_ylabel("Blue Channel")
+                                
+                                plt.tight_layout()
+                                st.pyplot(fig_2d)
+                            
+                            with tab3:
+                                # Scatter plots with correlation
+                                fig_scatter, axs_scatter = plt.subplots(1, 3, figsize=(15, 5))
+                                
+                                # Sample data for performance (use every nth pixel)
+                                step = max(1, len(pixels) // 10000)  # Limit to ~10k points
+                                sample_pixels = pixels[::step]
+                                
+                                corr_rg = pearsonr(sample_pixels[:, 0], sample_pixels[:, 1])[0]
+                                corr_rb = pearsonr(sample_pixels[:, 0], sample_pixels[:, 2])[0]
+                                corr_gb = pearsonr(sample_pixels[:, 1], sample_pixels[:, 2])[0]
+                                
+                                axs_scatter[0].scatter(sample_pixels[:, 0], sample_pixels[:, 1], alpha=0.1, s=1)
+                                axs_scatter[0].set_title(f"Red vs Green (r={corr_rg:.3f})")
+                                axs_scatter[0].set_xlabel("Red")
+                                axs_scatter[0].set_ylabel("Green")
+                                
+                                axs_scatter[1].scatter(sample_pixels[:, 0], sample_pixels[:, 2], alpha=0.1, s=1)
+                                axs_scatter[1].set_title(f"Red vs Blue (r={corr_rb:.3f})")
+                                axs_scatter[1].set_xlabel("Red")
+                                axs_scatter[1].set_ylabel("Blue")
+                                
+                                axs_scatter[2].scatter(sample_pixels[:, 1], sample_pixels[:, 2], alpha=0.1, s=1)
+                                axs_scatter[2].set_title(f"Green vs Blue (r={corr_gb:.3f})")
+                                axs_scatter[2].set_xlabel("Green")
+                                axs_scatter[2].set_ylabel("Blue")
+                                
+                                plt.tight_layout()
+                                st.pyplot(fig_scatter)
+                            
+                            with tab4:
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    # Channel correlation heatmap
+                                    st.subheader("Channel Correlation Matrix")
+                                    flat_rgb = img_array.reshape(-1, 3)
+                                    corr_matrix = np.corrcoef(flat_rgb.T)
+                                    
+                                    fig_corr, ax_corr = plt.subplots(figsize=(6, 4))
+                                    sns.heatmap(corr_matrix, annot=True, fmt=".3f", 
+                                            xticklabels=["Red", "Green", "Blue"], 
+                                            yticklabels=["Red", "Green", "Blue"], 
+                                            ax=ax_corr, cmap='coolwarm', center=0)
+                                    ax_corr.set_title("RGB Channel Correlations")
+                                    st.pyplot(fig_corr)
+                                
+                                with col2:
+                                    # KDE distribution plot
+                                    st.subheader("Intensity Distribution (KDE)")
+                                    fig_kde, ax_kde = plt.subplots(figsize=(6, 4))
+                                    sns.kdeplot(data=r.flatten(), color="red", label="Red", ax=ax_kde, alpha=0.7)
+                                    sns.kdeplot(data=g.flatten(), color="green", label="Green", ax=ax_kde, alpha=0.7)
+                                    sns.kdeplot(data=b.flatten(), color="blue", label="Blue", ax=ax_kde, alpha=0.7)
+                                    sns.kdeplot(data=gray.flatten(), color="black", label="Grayscale", ax=ax_kde, alpha=0.7)
+                                    ax_kde.set_title("Pixel Intensity Distribution")
+                                    ax_kde.set_xlabel("Pixel Value")
+                                    ax_kde.set_ylabel("Density")
+                                    ax_kde.legend()
+                                    st.pyplot(fig_kde)
 
                         # Advanced Analysis Section
+                        st.markdown("---")
                         st.header("🔬 Advanced Analysis")
+                        with st.expander("Advanced Analysis", expanded=False):
                         
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            st.subheader("Image Quality Metrics")
+                            col1, col2, col3 = st.columns(3)
                             
-                            # Contrast ratio
-                            contrast = np.std(gray) / np.mean(gray) if np.mean(gray) > 0 else 0
+                            with col1:
+                                st.subheader("Image Quality Metrics")
+                                
+                                # Contrast ratio
+                                contrast = np.std(gray) / np.mean(gray) if np.mean(gray) > 0 else 0
+                                
+                                # Dynamic range
+                                dynamic_range = np.max(gray) - np.min(gray)
+                                
+                                # Entropy (information content)
+                                img_entropy = scipy_entropy(np.histogram(gray, bins=256)[0] + 1)
+                                
+                                st.metric("Contrast Ratio", f"{contrast:.3f}")
+                                st.metric("Dynamic Range", f"{dynamic_range}/255")
+                                st.metric("Information Content", f"{img_entropy:.3f}")
                             
-                            # Dynamic range
-                            dynamic_range = np.max(gray) - np.min(gray)
+                            with col2:
+                                st.subheader("Color Distribution")
+                                
+                                # Calculate color moments
+                                mean_color = np.mean(pixels, axis=0)
+                                std_color = np.std(pixels, axis=0)
+                                
+                                st.write("**Mean RGB:**")
+                                st.write(f"R: {mean_color[0]:.1f}, G: {mean_color[1]:.1f}, B: {mean_color[2]:.1f}")
+                                
+                                st.write("**Standard Deviation:**")
+                                st.write(f"R: {std_color[0]:.1f}, G: {std_color[1]:.1f}, B: {std_color[2]:.1f}")
                             
-                            # Entropy (information content)
-                            img_entropy = scipy_entropy(np.histogram(gray, bins=256)[0] + 1)
-                            
-                            st.metric("Contrast Ratio", f"{contrast:.3f}")
-                            st.metric("Dynamic Range", f"{dynamic_range}/255")
-                            st.metric("Information Content", f"{img_entropy:.3f}")
-                        
-                        with col2:
-                            st.subheader("Color Distribution")
-                            
-                            # Calculate color moments
-                            mean_color = np.mean(pixels, axis=0)
-                            std_color = np.std(pixels, axis=0)
-                            
-                            st.write("**Mean RGB:**")
-                            st.write(f"R: {mean_color[0]:.1f}, G: {mean_color[1]:.1f}, B: {mean_color[2]:.1f}")
-                            
-                            st.write("**Standard Deviation:**")
-                            st.write(f"R: {std_color[0]:.1f}, G: {std_color[1]:.1f}, B: {std_color[2]:.1f}")
-                        
-                        with col3:
-                            st.subheader("Histogram Statistics")
-                            
-                            # Peak analysis
-                            hist_gray, _ = np.histogram(gray, bins=256)
-                            peak_value = np.argmax(hist_gray)
-                            peak_count = np.max(hist_gray)
-                            
-                            # Histogram spread
-                            hist_spread = np.std(np.repeat(range(256), hist_gray))
-                            
-                            st.metric("Peak Intensity", f"{peak_value}")
-                            st.metric("Peak Frequency", f"{peak_count:,}")
-                            st.metric("Histogram Spread", f"{hist_spread:.1f}")
+                            with col3:
+                                st.subheader("Histogram Statistics")
+                                
+                                # Peak analysis
+                                hist_gray, _ = np.histogram(gray, bins=256)
+                                peak_value = np.argmax(hist_gray)
+                                peak_count = np.max(hist_gray)
+                                
+                                # Histogram spread
+                                hist_spread = np.std(np.repeat(range(256), hist_gray))
+                                
+                                st.metric("Peak Intensity", f"{peak_value}")
+                                st.metric("Peak Frequency", f"{peak_count:,}")
+                                st.metric("Histogram Spread", f"{hist_spread:.1f}")
 
                         # Export functionality
+                        st.markdown("---")
                         st.header("💾 Export Analysis")
                         
                         if st.button("Generate Analysis Report"):
@@ -6476,9 +6531,11 @@ def main():
                                 file_name=f"image_analysis_{uploaded_file.name}.txt",
                                 mime="text/plain"
                             )
+                        st.markdown("---")
 
                     else:
                         st.info("👆 Upload an image to begin analysis")
+                        st.info("👆 The process may take a long time.")
                         with st.expander("Features:", expanded=False):
                             st.markdown("""
                             - 📊 Comprehensive statistical metrics for each color channel
