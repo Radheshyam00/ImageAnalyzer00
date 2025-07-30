@@ -32,9 +32,10 @@
 
 ## 🔧 Installation
 
+
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/image-analyzer.git
+git clone https://github.com/Radheshyam00/ImageAnalyzer00.git
 cd image-analyzer
 
 # Create and activate a virtual environment
@@ -43,3 +44,30 @@ source venv/bin/activate  # or venv\Scripts\activate on Windows
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Create a .env file in the root directory and add
+MONGO_URI=your_mongodb_uri  # optional, for File Inspector Pro
+```
+
+## Running the App
+```bash
+streamlit run ImageAnalyzer.py
+```
+
+Open your browser to http://localhost:8501
+
+🧪 Example Use Cases
+Audit photo metadata before sharing online
+
+Conduct forensic image analysis
+
+Remove GPS or timestamp information for privacy
+
+Detect steganographic payloads
+
+Check for malware using VirusTotal
+
+🔐 VirusTotal Usage
+To enable malware scanning, insert your VirusTotal API key in the sidebar or .env.
+
+Free tier: 4 requests/minute
