@@ -54,20 +54,16 @@ MONGO_URI=your_mongodb_uri  # optional, for File Inspector Pro
 streamlit run ImageAnalyzer.py
 ```
 
-Open your browser to http://localhost:8501
+Open your browser to `http://localhost:8501`
 
-🧪 Example Use Cases
-Audit photo metadata before sharing online
+## Example Use Cases
+- Audit photo metadata before sharing online
 
-Conduct forensic image analysis
+- Conduct forensic image analysis
 
-Remove GPS or timestamp information for privacy
+- Remove GPS or timestamp information for privacy
 
-Detect steganographic payloads
+- Detect steganographic payloads
 
-Check for malware using VirusTotal
+- Check for malware using VirusTotal
 
-🔐 VirusTotal Usage
-To enable malware scanning, insert your VirusTotal API key in the sidebar or .env.
-
-Free tier: 4 requests/minute
