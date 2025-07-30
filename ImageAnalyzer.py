@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_ace import st_ace
+import imghdr
 import string
 import hashlib
 import binascii
@@ -2891,125 +2892,163 @@ def main():
                             # Load and display original image
                             image = Image.open(uploaded_file).convert("RGB")
                             
-                            col1, col2 = st.columns([2, 1])
+                            # col1, col2 = st.columns([2, 1])
                             
-                            with col1:
-                                st.subheader("🖼️ Original Image")
-                                st.image(image, use_column_width=True)
+                            # with col1:
+                            #     st.subheader("🖼️ Original Image")
+                            #     st.image(image, use_column_width=True)
                                 
-                                # Display image metadata
-                                st.caption(f"Dimensions: {image.size[0]} × {image.size[1]} pixels")
-                                if hasattr(uploaded_file, 'name'):
-                                    st.caption(f"Filename: {uploaded_file.name}")
+                            #     # Display image metadata
+                            #     st.caption(f"Dimensions: {image.size[0]} × {image.size[1]} pixels")
+                            #     if hasattr(uploaded_file, 'name'):
+                            #         st.caption(f"Filename: {uploaded_file.name}")
 
-                            with col2:
-                                st.subheader("📊 Image Info")
-                                st.write(f"**Format**: {image.format if hasattr(image, 'format') else 'Unknown'}")
-                                st.write(f"**Mode**: {image.mode}")
-                                st.write(f"**Size**: {image.size[0]} × {image.size[1]}")
+                            # with col2:
+                            #     st.subheader("📊 Image Info")
+                            #     st.write(f"**Format**: {image.format if hasattr(image, 'format') else 'Unknown'}")
+                            #     st.write(f"**Mode**: {image.mode}")
+                            #     st.write(f"**Size**: {image.size[0]} × {image.size[1]}")
                                 
-                                # File size
-                                if hasattr(uploaded_file, 'size'):
-                                    size_kb = uploaded_file.size / 1024
-                                    st.write(f"**File Size**: {size_kb:.1f} KB")
+                            #     # File size
+                            #     if hasattr(uploaded_file, 'size'):
+                            #         size_kb = uploaded_file.size / 1024
+                            #         st.write(f"**File Size**: {size_kb:.1f} KB")
 
                             # Perform ELA
-                            st.subheader("🔬 Error Level Analysis")
-                            
-                            with st.spinner("Performing ELA analysis..."):
-                                # Save as JPEG to in-memory buffer with specified quality
-                                buffer = io.BytesIO()
-                                image.save(buffer, format="JPEG", quality=quality)
-                                buffer.seek(0)
-
-                                # Load the recompressed image
-                                recompressed = Image.open(buffer)
-
-                                # Calculate the difference (ELA)
-                                ela_image = ImageChops.difference(image, recompressed)
-
-                                # Apply blur if requested
-                                if apply_blur:
-                                    ela_image = ela_image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-                                # Enhance the brightness
-                                enhancer = ImageEnhance.Brightness(ela_image)
-                                ela_enhanced = enhancer.enhance(enhance_factor)
-
-                            # Display results
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.caption("Original Image")
-                                st.image(image, use_column_width=True)
+                            st.markdown("---")
+                            with st.expander("Error Level Analysis", expanded=False):
+                                # st.subheader("🔬 Error Level Analysis")
                                 
-                            with col2:
-                                st.caption(f"ELA Result (Q={quality}, Enhance={enhance_factor})")
-                                st.image(ela_enhanced, use_column_width=True)
+                                with st.spinner("Performing ELA analysis..."):
+                                    # Save as JPEG to in-memory buffer with specified quality
+                                    buffer = io.BytesIO()
+                                    image.save(buffer, format="JPEG", quality=quality)
+                                    buffer.seek(0)
+
+                                    # Load the recompressed image
+                                    recompressed = Image.open(buffer)
+
+                                    # Calculate the difference (ELA)
+                                    ela_image = ImageChops.difference(image, recompressed)
+
+                                    # Apply blur if requested
+                                    if apply_blur:
+                                        ela_image = ela_image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+                                    # Enhance the brightness
+                                    enhancer = ImageEnhance.Brightness(ela_image)
+                                    ela_enhanced = enhancer.enhance(enhance_factor)
+
+                                # Display results
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.caption("Original Image")
+                                    st.image(image, use_column_width=True)
+                                    
+                                with col2:
+                                    st.caption(f"ELA Result (Q={quality}, Enhance={enhance_factor})")
+                                    st.image(ela_enhanced, use_column_width=True)
 
                             # ELA Statistics
                             stats = calculate_ela_stats(ela_enhanced)
                             
-                            st.subheader("📈 ELA Statistics")
-                            col1, col2, col3, col4, col5 = st.columns(5)
-                            
-                            with col1:
-                                st.metric("Mean Intensity", f"{stats['mean']:.1f}")
-                            with col2:
-                                st.metric("Median", f"{stats['median']:.1f}")
-                            with col3:
-                                st.metric("Std Dev", f"{stats['stddev']:.1f}")
-                            with col4:
-                                st.metric("Min Value", f"{stats['min']}")
-                            with col5:
-                                st.metric("Max Value", f"{stats['max']}")
+                            with st.expander("ELA Statistics Info", expanded=False):
+                                st.subheader("📈 ELA Statistics")
+                                col1, col2, col3, col4, col5 = st.columns(5)
+                                
+                                with col1:
+                                    st.metric("Mean Intensity", f"{stats['mean']:.1f}")
+                                with col2:
+                                    st.metric("Median", f"{stats['median']:.1f}")
+                                with col3:
+                                    st.metric("Std Dev", f"{stats['stddev']:.1f}")
+                                with col4:
+                                    st.metric("Min Value", f"{stats['min']}")
+                                with col5:
+                                    st.metric("Max Value", f"{stats['max']}")
+                                
+                                st.subheader("📊 Image Info")
+
+                                col1, col2, col3, col4 = st.columns(4)
+
+                                with col1:
+                                    img_format = image.format
+
+                                    # Fallback: use filename extension
+                                    if not img_format and hasattr(uploaded_file, "name"):
+                                        ext = os.path.splitext(uploaded_file.name)[-1].lower().replace('.', '')
+                                        img_format = ext.upper() if ext else 'Unknown'
+
+                                    # Extra fallback using imghdr
+                                    if not img_format or img_format == 'UNKNOWN':
+                                        uploaded_file.seek(0)
+                                        img_format = imghdr.what(uploaded_file) or 'Unknown'
+                                        uploaded_file.seek(0)
+                                    st.metric(label="Format", value=img_format)
+
+                                with col2:
+                                    st.metric(label="Mode", value=image.mode)
+
+                                with col3:
+                                    st.metric(label="Size", value=f"{image.size[0]} × {image.size[1]}")
+
+                                with col4:
+                                    if hasattr(uploaded_file, 'size'):
+                                        size_kb = uploaded_file.size / 1024
+                                        st.metric(label="File Size", value=f"{size_kb:.1f} KB")
+
 
                             # Additional visualizations
                             if show_histogram:
-                                st.subheader("📊 ELA Histogram Analysis")
-                                hist_fig = create_histogram(ela_enhanced)
-                                st.pyplot(hist_fig)
-                                plt.close(hist_fig)
-                                
-                                st.markdown("""
-                                **Interpreting the histogram:**
-                                - **Left-skewed distribution**: Most pixels have low error levels (likely authentic)
-                                - **Right-skewed or bimodal**: Possible manipulation or compression artifacts
-                                - **Uniform distribution**: May indicate heavy processing or manipulation
-                                """)
+                                with st.expander("ELA Histogram Analysis", expanded=False):
+                                    # st.subheader("📊 ELA Histogram Analysis")
+                                    hist_fig = create_histogram(ela_enhanced)
+                                    st.pyplot(hist_fig)
+                                    plt.close(hist_fig)
+                                    
+                                    st.markdown("""
+                                    **Interpreting the histogram:**
+                                    - **Left-skewed distribution**: Most pixels have low error levels (likely authentic)
+                                    - **Right-skewed or bimodal**: Possible manipulation or compression artifacts
+                                    - **Uniform distribution**: May indicate heavy processing or manipulation
+                                    """)
 
                             if show_heatmap:
-                                st.subheader("🌡️ ELA Intensity Heatmap")
-                                heatmap_fig = create_heatmap(ela_enhanced)
-                                st.pyplot(heatmap_fig)
-                                plt.close(heatmap_fig)
+                                with st.expander("ELA Intensity Heatmap", expanded=False):
+                                # st.subheader("🌡️ ELA Intensity Heatmap")
+                                    heatmap_fig = create_heatmap(ela_enhanced)
+                                    st.pyplot(heatmap_fig)
+                                    plt.close(heatmap_fig)
 
                             # Analysis interpretation
-                            st.subheader("🎯 Analysis Interpretation")
+                            with st.expander("Analysis Interpretation", expanded=False):
+                            # st.subheader("🎯 Analysis Interpretation")
                             
-                            interpretation_text = ""
-                            
-                            if stats['stddev'] > 15:
-                                interpretation_text += "⚠️ **High variation** in error levels detected. This could indicate digital manipulation or heavy compression artifacts.\n\n"
-                            else:
-                                interpretation_text += "✅ **Low variation** in error levels. This suggests the image may be authentic or uniformly processed.\n\n"
+                                interpretation_text = ""
                                 
-                            if stats['mean'] > 20:
-                                interpretation_text += "⚠️ **High average error level** detected. Look for bright regions that might indicate manipulation.\n\n"
-                            else:
-                                interpretation_text += "✅ **Low average error level**. The image shows consistent compression characteristics.\n\n"
+                                if stats['stddev'] > 15:
+                                    interpretation_text += "⚠️ **High variation** in error levels detected. This could indicate digital manipulation or heavy compression artifacts.\n\n"
+                                else:
+                                    interpretation_text += "✅ **Low variation** in error levels. This suggests the image may be authentic or uniformly processed.\n\n"
+                                    
+                                if stats['mean'] > 20:
+                                    interpretation_text += "⚠️ **High average error level** detected. Look for bright regions that might indicate manipulation.\n\n"
+                                else:
+                                    interpretation_text += "✅ **Low average error level**. The image shows consistent compression characteristics.\n\n"
+                                    
+                                interpretation_text += """
+                                **Remember**: ELA is just one tool in image forensics. Consider these factors:
+                                - Original image quality and compression history
+                                - File format and metadata
+                                - Context and source of the image
+                                - Other forensic techniques (noise analysis, lighting consistency, etc.)
+                                """
                                 
-                            interpretation_text += """
-                            **Remember**: ELA is just one tool in image forensics. Consider these factors:
-                            - Original image quality and compression history
-                            - File format and metadata
-                            - Context and source of the image
-                            - Other forensic techniques (noise analysis, lighting consistency, etc.)
-                            """
-                            
-                            st.markdown(interpretation_text)
+                                st.markdown(interpretation_text)
 
                             # Download options
+                            st.markdown("---")
                             st.subheader("💾 Download Results")
                             col1, col2 = st.columns(2)
                             
@@ -3119,18 +3158,32 @@ def main():
                         image = Image.open(uploaded_file).convert("RGB")
                         img_array = np.array(image)
 
-                        st.subheader("🎨 Original Image")
-                        col_orig1, col_orig2 = st.columns([2, 1])
+                        # st.subheader("🎨 Original Image")
+                        # col_orig1, col_orig2 = st.columns([2, 1])
                         
-                        with col_orig1:
-                            st.image(img_array, channels="RGB", use_column_width=True)
+                        # with col_orig1:
+                        #     st.image(img_array, channels="RGB", use_column_width=True)
                         
-                        with col_orig2:
-                            st.markdown("**Image Info:**")
-                            st.write(f"Dimensions: {img_array.shape[1]} x {img_array.shape[0]}")
-                            st.write(f"Channels: {img_array.shape[2]}")
-                            st.write(f"Data type: {img_array.dtype}")
+                        # with col_orig2:
+                        #     st.markdown("**Image Info:**")
+                        #     st.write(f"Dimensions: {img_array.shape[1]} x {img_array.shape[0]}")
+                        #     st.write(f"Channels: {img_array.shape[2]}")
+                        #     st.write(f"Data type: {img_array.dtype}")
+                        st.markdown("---")
+                        st.subheader("📊 Image Info")
 
+                        # Layout with 3 columns for metrics
+                        col1, col2, col3 = st.columns(3)
+
+                        with col1:
+                            st.metric(label="Dimensions", value=f"{img_array.shape[1]} × {img_array.shape[0]}")
+
+                        with col2:
+                            st.metric(label="Channels", value=str(img_array.shape[2]))
+
+                        with col3:
+                            st.metric(label="Data Type", value=str(img_array.dtype))
+                        st.markdown("---")
                         # Preprocessing options
                         with st.sidebar:
                             st.markdown("---")
@@ -3250,65 +3303,71 @@ def main():
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.markdown("#### 🧱 Canny Edge Detection")
-                            st.image(canny, clamp=True, caption="Canny Edge Detection", use_column_width=True)
+                            with st.expander("Canny Edge Detection", expanded=False):
+                            # st.markdown("#### 🧱 Canny Edge Detection")
+                                st.image(canny, clamp=True, caption="Canny Edge Detection", use_column_width=True)
                             
-                            st.markdown("#### 🌊 Laplacian Edge Detection")
-                            st.image(laplacian, clamp=True, caption="Laplacian Edge Detection", use_column_width=True)
+                            with st.expander("Laplacian Edge Detection", expanded=False):
+                            # st.markdown("#### 🌊 Laplacian Edge Detection")
+                                st.image(laplacian, clamp=True, caption="Laplacian Edge Detection", use_column_width=True)
 
                         with col2:
-                            st.markdown("#### 🧭 Sobel Edge Detection")
-                            st.image(sobel, clamp=True, caption="Sobel Edge Detection", use_column_width=True)
+                            with st.expander("Sobel Edge Detection", expanded=False):
+                            # st.markdown("#### 🧭 Sobel Edge Detection")
+                                st.image(sobel, clamp=True, caption="Sobel Edge Detection", use_column_width=True)
                             
-                            st.markdown("#### ⚡ Scharr Edge Detection")
-                            st.image(scharr, clamp=True, caption="Scharr Edge Detection", use_column_width=True)
+                            with st.expander("Scharr Edge Detection", expanded=False):
+                            # st.markdown("#### ⚡ Scharr Edge Detection")
+                                st.image(scharr, clamp=True, caption="Scharr Edge Detection", use_column_width=True)
 
                         # Combined edges visualization
                         if combine_edges:
-                            st.subheader("🎭 Combined Edge Detection")
-                            combined = np.maximum.reduce([canny, sobel, laplacian, scharr])
-                            st.image(combined, clamp=True, caption="Combined All Edge Detection Methods", use_column_width=True)
+                            with st.expander("Combined Edge Detection", expanded=False):
+                            # st.subheader("🎭 Combined Edge Detection")
+                                combined = np.maximum.reduce([canny, sobel, laplacian, scharr])
+                                st.image(combined, clamp=True, caption="Combined All Edge Detection Methods", use_column_width=True)
 
                         # Edge statistics and histogram
                         if show_histogram:
-                            st.subheader("📊 Edge Detection Statistics")
+                            with st.expander("Edge Detection Statistics", expanded=False):
+                            # st.subheader("📊 Edge Detection Statistics")
                             
-                            col_stats1, col_stats2 = st.columns(2)
-                            
-                            with col_stats1:
-                                # Statistics
-                                st.markdown("**Edge Pixel Statistics:**")
-                                stats_data = {
-                                    "Method": ["Canny", "Sobel", "Laplacian", "Scharr"],
-                                    "Edge Pixels": [
-                                        np.count_nonzero(canny),
-                                        np.count_nonzero(sobel),
-                                        np.count_nonzero(laplacian),
-                                        np.count_nonzero(scharr)
-                                    ],
-                                    "Edge Percentage": [
-                                        f"{(np.count_nonzero(canny) / canny.size) * 100:.2f}%",
-                                        f"{(np.count_nonzero(sobel) / sobel.size) * 100:.2f}%",
-                                        f"{(np.count_nonzero(laplacian) / laplacian.size) * 100:.2f}%",
-                                        f"{(np.count_nonzero(scharr) / scharr.size) * 100:.2f}%"
-                                    ]
-                                }
-                                st.table(stats_data)
-                            
-                            with col_stats2:
-                                # Histogram
-                                fig, ax = plt.subplots(figsize=(8, 6))
-                                ax.hist(canny.flatten(), bins=50, alpha=0.7, label='Canny', color='red')
-                                ax.hist(sobel.flatten(), bins=50, alpha=0.7, label='Sobel', color='blue')
-                                ax.hist(laplacian.flatten(), bins=50, alpha=0.7, label='Laplacian', color='green')
-                                ax.hist(scharr.flatten(), bins=50, alpha=0.7, label='Scharr', color='orange')
-                                ax.set_xlabel('Pixel Intensity')
-                                ax.set_ylabel('Frequency')
-                                ax.set_title('Edge Detection Intensity Distribution')
-                                ax.legend()
-                                ax.grid(True, alpha=0.3)
-                                st.pyplot(fig)
-
+                                col_stats1, col_stats2 = st.columns(2)
+                                
+                                with col_stats1:
+                                    # Statistics
+                                    st.markdown("**Edge Pixel Statistics:**")
+                                    stats_data = {
+                                        "Method": ["Canny", "Sobel", "Laplacian", "Scharr"],
+                                        "Edge Pixels": [
+                                            np.count_nonzero(canny),
+                                            np.count_nonzero(sobel),
+                                            np.count_nonzero(laplacian),
+                                            np.count_nonzero(scharr)
+                                        ],
+                                        "Edge Percentage": [
+                                            f"{(np.count_nonzero(canny) / canny.size) * 100:.2f}%",
+                                            f"{(np.count_nonzero(sobel) / sobel.size) * 100:.2f}%",
+                                            f"{(np.count_nonzero(laplacian) / laplacian.size) * 100:.2f}%",
+                                            f"{(np.count_nonzero(scharr) / scharr.size) * 100:.2f}%"
+                                        ]
+                                    }
+                                    st.table(stats_data)
+                                
+                                with col_stats2:
+                                    # Histogram
+                                    fig, ax = plt.subplots(figsize=(8, 6))
+                                    ax.hist(canny.flatten(), bins=50, alpha=0.7, label='Canny', color='red')
+                                    ax.hist(sobel.flatten(), bins=50, alpha=0.7, label='Sobel', color='blue')
+                                    ax.hist(laplacian.flatten(), bins=50, alpha=0.7, label='Laplacian', color='green')
+                                    ax.hist(scharr.flatten(), bins=50, alpha=0.7, label='Scharr', color='orange')
+                                    ax.set_xlabel('Pixel Intensity')
+                                    ax.set_ylabel('Frequency')
+                                    ax.set_title('Edge Detection Intensity Distribution')
+                                    ax.legend()
+                                    ax.grid(True, alpha=0.3)
+                                    st.pyplot(fig)
+                            st.markdown("---")
                         # Download options
                         st.subheader("💾 Download Results")
                         col_dl1, col_dl2, col_dl3, col_dl4 = st.columns(4)
@@ -3356,6 +3415,7 @@ def main():
                                 file_name="scharr_edges.png",
                                 mime="image/png"
                             )
+                        st.markdown("---")
 
                     else:
                         st.info("👆 Please upload an image to get started with edge detection!")
@@ -3528,17 +3588,27 @@ def main():
                         img_np = np.array(image)
                         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
 
-                        col1, col2 = st.columns([2, 1])
+                        # col1, col2 = st.columns([2, 1])
                         
-                        with col1:
-                            st.subheader("📷 Original Image")
-                            st.image(image, use_column_width=True)
+                        # with col1:
+                        #     st.subheader("📷 Original Image")
+                        #     st.image(image, use_column_width=True)
                         
-                        with col2:
-                            st.subheader("📊 Noise Metrics")
-                            metrics = calculate_noise_metrics(gray)
-                            for metric, value in metrics.items():
-                                st.metric(metric, f"{value:.2f}")
+                        # with col2:
+                        #     st.subheader("📊 Noise Metrics")
+                        #     metrics = calculate_noise_metrics(gray)
+                        #     for metric, value in metrics.items():
+                        #         st.metric(metric, f"{value:.2f}")
+                        st.markdown("---")
+                        st.subheader("📊 Noise Metrics")
+
+                        # Assume `metrics` is a dictionary like {"PSNR": 32.1, "SNR": 20.5, ...}
+                        metrics = calculate_noise_metrics(gray)
+                        cols = st.columns(len(metrics))
+                        for col, (metric, value) in zip(cols, metrics.items()):
+                            with col:
+                                st.metric(label=metric, value=f"{value:.2f}")
+                        st.markdown("---")
 
                         # Tabs for different analysis methods
                         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -3547,153 +3617,162 @@ def main():
                         ])
 
                         with tab1:
-                            st.subheader("🔍 Local Variance Noise Map")
-                            ksize = st.slider("Kernel size for local variance", 3, 15, 5, step=2, key="var_kernel")
-                            local_var = compute_local_variance(gray, kernel_size=ksize)
-                            local_var_norm = cv2.normalize(local_var, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image(local_var_norm, caption="Local Variance Heatmap", channels="GRAY", use_column_width=True)
-                            with col2:
-                                fig, ax = plt.subplots()
-                                ax.hist(local_var.flatten(), bins=50, alpha=0.7, color='blue')
-                                ax.set_xlabel('Variance Value')
-                                ax.set_ylabel('Frequency')
-                                ax.set_title('Variance Distribution')
-                                st.pyplot(fig)
+                            with st.expander("Local Variance Noise Map", expanded=False):
+                            # st.subheader("🔍 Local Variance Noise Map")
+                                ksize = st.slider("Kernel size for local variance", 3, 15, 5, step=2, key="var_kernel")
+                                local_var = compute_local_variance(gray, kernel_size=ksize)
+                                local_var_norm = cv2.normalize(local_var, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.image(local_var_norm, caption="Local Variance Heatmap", channels="GRAY", use_column_width=True)
+                                with col2:
+                                    fig, ax = plt.subplots()
+                                    ax.hist(local_var.flatten(), bins=50, alpha=0.7, color='blue')
+                                    ax.set_xlabel('Variance Value')
+                                    ax.set_ylabel('Frequency')
+                                    ax.set_title('Variance Distribution')
+                                    st.pyplot(fig)
+                            # Comparison section
+                            with st.expander("Noise Detection Comparison", expanded=False):
+                            # st.subheader("📈 Noise Detection Comparison")
+                                comparison_option = st.selectbox(
+                                    "Choose comparison view",
+                                    ["Side-by-side", "Overlay", "Difference Map"]
+                                )
+                                
+                                if comparison_option == "Side-by-side":
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        local_var = compute_local_variance(gray, 5)
+                                        local_var_norm = cv2.normalize(local_var, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                        st.image(local_var_norm, caption="Local Variance", channels="GRAY")
+                                    with col2:
+                                        highpass = apply_highpass_filter(gray, 9)
+                                        st.image(highpass, caption="High-Pass Filter", channels="GRAY")
+                                    with col3:
+                                        laplacian = laplacian_noise_detection(gray)
+                                        laplacian_norm = cv2.normalize(laplacian, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                        st.image(laplacian_norm, caption="Laplacian", channels="GRAY")
+
+                                st.success("✅ Advanced noise analysis completed.")
 
                         with tab2:
-                            st.subheader("🧪 High-Pass Filter Noise Detection")
-                            ksize_hp = st.slider("Gaussian Blur kernel size", 3, 25, 9, step=2, key="hp_kernel")
-                            highpass = apply_highpass_filter(gray, kernel_size=ksize_hp)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image(highpass, caption="High-Pass Filter Result", channels="GRAY", use_column_width=True)
-                            with col2:
-                                fig, ax = plt.subplots()
-                                ax.hist(highpass.flatten(), bins=50, alpha=0.7, color='green')
-                                ax.set_xlabel('Filter Response')
-                                ax.set_ylabel('Frequency')
-                                ax.set_title('High-Pass Response Distribution')
-                                st.pyplot(fig)
+                            with st.expander("High-Pass Filter Noise Detection", expanded=False):
+                            # st.subheader("🧪 High-Pass Filter Noise Detection")
+                                ksize_hp = st.slider("Gaussian Blur kernel size", 3, 25, 9, step=2, key="hp_kernel")
+                                highpass = apply_highpass_filter(gray, kernel_size=ksize_hp)
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.image(highpass, caption="High-Pass Filter Result", channels="GRAY", use_column_width=True)
+                                with col2:
+                                    fig, ax = plt.subplots()
+                                    ax.hist(highpass.flatten(), bins=50, alpha=0.7, color='green')
+                                    ax.set_xlabel('Filter Response')
+                                    ax.set_ylabel('Frequency')
+                                    ax.set_title('High-Pass Response Distribution')
+                                    st.pyplot(fig)
 
                         with tab3:
-                            st.subheader("⚙️ Frequency Domain Noise Detection")
-                            freq_map = frequency_noise_map(gray)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                fig, ax = plt.subplots()
-                                ax.imshow(freq_map, cmap='inferno')
-                                ax.set_title("FFT Magnitude Spectrum")
-                                ax.axis('off')
-                                st.pyplot(fig)
-                            with col2:
-                                # Create radial average of frequency spectrum
-                                center = (freq_map.shape[0]//2, freq_map.shape[1]//2)
-                                y, x = np.ogrid[:freq_map.shape[0], :freq_map.shape[1]]
-                                r = np.sqrt((x - center[1])**2 + (y - center[0])**2)
-                                r = r.astype(int)
+                            with st.expander("Frequency Domain Noise Detection", expanded=False):
+                            # st.subheader("⚙️ Frequency Domain Noise Detection")
+                                freq_map = frequency_noise_map(gray)
                                 
-                                # Calculate radial average
-                                tbin = np.bincount(r.ravel(), freq_map.ravel())
-                                nr = np.bincount(r.ravel())
-                                radial_prof = tbin / (nr + 1e-8)
-                                
-                                fig, ax = plt.subplots()
-                                ax.plot(radial_prof[:len(radial_prof)//2])
-                                ax.set_xlabel('Spatial Frequency')
-                                ax.set_ylabel('Magnitude')
-                                ax.set_title('Radial Frequency Profile')
-                                st.pyplot(fig)
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    fig, ax = plt.subplots()
+                                    ax.imshow(freq_map, cmap='inferno')
+                                    ax.set_title("FFT Magnitude Spectrum")
+                                    ax.axis('off')
+                                    st.pyplot(fig)
+                                with col2:
+                                    # Create radial average of frequency spectrum
+                                    center = (freq_map.shape[0]//2, freq_map.shape[1]//2)
+                                    y, x = np.ogrid[:freq_map.shape[0], :freq_map.shape[1]]
+                                    r = np.sqrt((x - center[1])**2 + (y - center[0])**2)
+                                    r = r.astype(int)
+                                    
+                                    # Calculate radial average
+                                    tbin = np.bincount(r.ravel(), freq_map.ravel())
+                                    nr = np.bincount(r.ravel())
+                                    radial_prof = tbin / (nr + 1e-8)
+                                    
+                                    fig, ax = plt.subplots()
+                                    ax.plot(radial_prof[:len(radial_prof)//2])
+                                    ax.set_xlabel('Spatial Frequency')
+                                    ax.set_ylabel('Magnitude')
+                                    ax.set_title('Radial Frequency Profile')
+                                    st.pyplot(fig)
 
                         with tab4:
-                            st.subheader("🎯 Edge-Based Noise Detection")
-                            method = st.selectbox("Select edge detection method", ["Laplacian", "Sobel"])
-                            
-                            if method == "Laplacian":
-                                edge_response = laplacian_noise_detection(gray)
-                                title = "Laplacian Edge Detection"
-                            else:
-                                edge_response = sobel_noise_detection(gray)
-                                title = "Sobel Gradient Magnitude"
-                            
-                            edge_norm = cv2.normalize(edge_response, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image(edge_norm, caption=title, channels="GRAY", use_column_width=True)
-                            with col2:
-                                # Texture analysis
-                                texture_response = texture_based_noise_detection(gray)
-                                texture_norm = cv2.normalize(texture_response, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                                st.image(texture_norm, caption="Texture-Based Noise Detection", channels="GRAY", use_column_width=True)
+                            with st.expander("Edge-Based Noise Detection", expanded=False):
+                            # st.subheader("🎯 Edge-Based Noise Detection")
+                                method = st.selectbox("Select edge detection method", ["Laplacian", "Sobel"])
+                                
+                                if method == "Laplacian":
+                                    edge_response = laplacian_noise_detection(gray)
+                                    title = "Laplacian Edge Detection"
+                                else:
+                                    edge_response = sobel_noise_detection(gray)
+                                    title = "Sobel Gradient Magnitude"
+                                
+                                edge_norm = cv2.normalize(edge_response, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.image(edge_norm, caption=title, channels="GRAY", use_column_width=True)
+                                with col2:
+                                    # Texture analysis
+                                    texture_response = texture_based_noise_detection(gray)
+                                    texture_norm = cv2.normalize(texture_response, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                    st.image(texture_norm, caption="Texture-Based Noise Detection", channels="GRAY", use_column_width=True)
 
                         with tab5:
-                            st.subheader("🔧 Wiener Filter Noise Estimation")
-                            noise_var_input = st.slider("Noise variance (0 = auto-estimate)", 0.0, 1000.0, 0.0)
-                            noise_var = noise_var_input if noise_var_input > 0 else None
-                            
-                            noise_est, estimated_var = wiener_filter_estimate(gray, noise_var)
-                            noise_norm = cv2.normalize(np.abs(noise_est), None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image(noise_norm, caption="Estimated Noise", channels="GRAY", use_column_width=True)
-                                st.write(f"Estimated noise variance: {estimated_var:.2f}")
-                            with col2:
-                                # Denoised version
-                                denoised = gray - noise_est.astype(np.uint8)
-                                st.image(denoised, caption="Denoised Image", channels="GRAY", use_column_width=True)
+                            with st.expander("Wiener Filter Noise Estimation", expanded=False):
+                            # st.subheader("🔧 Wiener Filter Noise Estimation")
+                                noise_var_input = st.slider("Noise variance (0 = auto-estimate)", 0.0, 1000.0, 0.0)
+                                noise_var = noise_var_input if noise_var_input > 0 else None
+                                
+                                noise_est, estimated_var = wiener_filter_estimate(gray, noise_var)
+                                noise_norm = cv2.normalize(np.abs(noise_est), None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.image(noise_norm, caption="Estimated Noise", channels="GRAY", use_column_width=True)
+                                    st.write(f"Estimated noise variance: {estimated_var:.2f}")
+                                with col2:
+                                    # Denoised version
+                                    denoised = gray - noise_est.astype(np.uint8)
+                                    st.image(denoised, caption="Denoised Image", channels="GRAY", use_column_width=True)
 
                         with tab6:
-                            st.subheader("🎨 Noise Type Classification")
-                            with st.spinner("Classifying noise types..."):
-                                noise_map, cluster_centers = noise_classification(gray)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                fig, ax = plt.subplots()
-                                im = ax.imshow(noise_map, cmap='tab10')
-                                ax.set_title("Noise Type Classification")
-                                ax.axis('off')
-                                plt.colorbar(im, ax=ax)
-                                st.pyplot(fig)
-                            
-                            with col2:
-                                st.write("**Cluster Centers (Feature Space):**")
-                                for i, center in enumerate(cluster_centers):
-                                    st.write(f"Cluster {i}: Local Var={center[0]:.3f}, HighPass={center[1]:.3f}, Laplacian={center[2]:.3f}")
+                            with st.expander("Noise Type Classification", expanded=False):
+                            # st.subheader("🎨 Noise Type Classification")
+                                with st.spinner("Classifying noise types..."):
+                                    noise_map, cluster_centers = noise_classification(gray)
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    fig, ax = plt.subplots()
+                                    im = ax.imshow(noise_map, cmap='tab10')
+                                    ax.set_title("Noise Type Classification")
+                                    ax.axis('off')
+                                    plt.colorbar(im, ax=ax)
+                                    st.pyplot(fig)
+                                
+                                with col2:
+                                    st.write("**Cluster Centers (Feature Space):**")
+                                    for i, center in enumerate(cluster_centers):
+                                        st.write(f"Cluster {i}: Local Var={center[0]:.3f}, HighPass={center[1]:.3f}, Laplacian={center[2]:.3f}")
 
-                        # Comparison section
-                        st.subheader("📈 Noise Detection Comparison")
-                        comparison_option = st.selectbox(
-                            "Choose comparison view",
-                            ["Side-by-side", "Overlay", "Difference Map"]
-                        )
                         
-                        if comparison_option == "Side-by-side":
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                local_var = compute_local_variance(gray, 5)
-                                local_var_norm = cv2.normalize(local_var, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                                st.image(local_var_norm, caption="Local Variance", channels="GRAY")
-                            with col2:
-                                highpass = apply_highpass_filter(gray, 9)
-                                st.image(highpass, caption="High-Pass Filter", channels="GRAY")
-                            with col3:
-                                laplacian = laplacian_noise_detection(gray)
-                                laplacian_norm = cv2.normalize(laplacian, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                                st.image(laplacian_norm, caption="Laplacian", channels="GRAY")
-
-                        st.success("✅ Advanced noise analysis completed.")
+                        st.markdown("---")
                     else:
                         st.info("📤 Upload an image to start advanced noise detection.")
                         
                         # Add some help information
-                        with st.expander("ℹ️ About this tool"):
+                        with st.expander("ℹ️ About this tool", expanded=False):
                             st.markdown("""
                             This advanced noise detection tool provides multiple methods to analyze and visualize noise in images:
                             
@@ -5168,7 +5247,7 @@ def main():
                                         if original_size != resized_size:
                                             st.info(f"Image resized from {original_size} to {resized_size} for faster processing")
                                         
-                                        st.image(image, caption="Processed Image", use_column_width=True)
+                                        # st.image(image, caption="Processed Image", use_column_width=True)
                                         
                                         img_np = np.array(image)
                                         
@@ -5189,7 +5268,7 @@ def main():
                                     # Percentiles
                                     p25 = np.percentile(luminance, 25)
                                     p75 = np.percentile(luminance, 75)
-                                    
+                                    st.markdown("---")
                                     st.markdown("### 📊 Comprehensive Luminance Statistics")
                                     
                                     # Display metrics in columns
@@ -5204,175 +5283,179 @@ def main():
                                     col6.metric("Maximum", f"{max_lum:.2f}")
                                     col7.metric("25th Percentile", f"{p25:.2f}")
                                     col8.metric("75th Percentile", f"{p75:.2f}")
-                                    
+                                    st.markdown("---")
                                     # Create tabs for different visualizations
                                     tab1, tab2, tab3, tab4 = st.tabs(["🔥 Heatmap", "📈 Histogram", "🎯 Threshold Analysis", "📋 Data Export"])
                                     
                                     with tab1:
-                                        st.markdown("### Luminance Heatmap")
-                                        fig1, ax1 = plt.subplots(figsize=(12, 8))
-                                        heatmap = ax1.imshow(luminance, cmap="inferno", interpolation="nearest")
-                                        plt.colorbar(heatmap, ax=ax1, label='Luminance Value')
-                                        ax1.set_title(f"Luminance Heatmap ({color_space})")
-                                        ax1.axis("off")
-                                        st.pyplot(fig1)
-                                        
-                                        # Download heatmap
-                                        buf1 = io.BytesIO()
-                                        fig1.savefig(buf1, format="png", dpi=300, bbox_inches='tight')
-                                        buf1.seek(0)
-                                        st.download_button("📥 Download Heatmap (High Quality)", buf1, 
-                                                        file_name="luminance_heatmap.png", mime="image/png")
+                                        with st.expander("Luminance Heatmap", expanded=False):
+                                        # st.markdown("### Luminance Heatmap")
+                                            fig1, ax1 = plt.subplots(figsize=(12, 8))
+                                            heatmap = ax1.imshow(luminance, cmap="inferno", interpolation="nearest")
+                                            plt.colorbar(heatmap, ax=ax1, label='Luminance Value')
+                                            ax1.set_title(f"Luminance Heatmap ({color_space})")
+                                            ax1.axis("off")
+                                            st.pyplot(fig1)
+                                            
+                                            # Download heatmap
+                                            buf1 = io.BytesIO()
+                                            fig1.savefig(buf1, format="png", dpi=300, bbox_inches='tight')
+                                            buf1.seek(0)
+                                            st.download_button("📥 Download Heatmap (High Quality)", buf1, 
+                                                            file_name="luminance_heatmap.png", mime="image/png")
                                     
                                     with tab2:
-                                        st.markdown("### Luminance Distribution")
-                                        fig2, (ax2, ax3) = plt.subplots(1, 2, figsize=(15, 6))
-                                        
-                                        # Histogram
-                                        ax2.hist(luminance.flatten(), bins=50, alpha=0.7, color='skyblue', edgecolor='black')
-                                        ax2.axvline(avg_lum, color='red', linestyle='--', label=f'Mean: {avg_lum:.2f}')
-                                        ax2.axvline(median_lum, color='green', linestyle='--', label=f'Median: {median_lum:.2f}')
-                                        ax2.set_xlabel('Luminance Value')
-                                        ax2.set_ylabel('Frequency')
-                                        ax2.set_title('Luminance Distribution')
-                                        ax2.legend()
-                                        ax2.grid(True, alpha=0.3)
-                                        
-                                        # Box plot
-                                        ax3.boxplot(luminance.flatten(), vert=True)
-                                        ax3.set_ylabel('Luminance Value')
-                                        ax3.set_title('Luminance Box Plot')
-                                        ax3.grid(True, alpha=0.3)
-                                        
-                                        st.pyplot(fig2)
-                                        
-                                        # Download histogram
-                                        buf2 = io.BytesIO()
-                                        fig2.savefig(buf2, format="png", dpi=300, bbox_inches='tight')
-                                        buf2.seek(0)
-                                        st.download_button("📥 Download Distribution Plot", buf2, 
-                                                        file_name="luminance_distribution.png", mime="image/png")
+                                        with st.expander("Luminance Distribution", expanded=False):
+                                        # st.markdown("### Luminance Distribution")
+                                            fig2, (ax2, ax3) = plt.subplots(1, 2, figsize=(15, 6))
+                                            
+                                            # Histogram
+                                            ax2.hist(luminance.flatten(), bins=50, alpha=0.7, color='skyblue', edgecolor='black')
+                                            ax2.axvline(avg_lum, color='red', linestyle='--', label=f'Mean: {avg_lum:.2f}')
+                                            ax2.axvline(median_lum, color='green', linestyle='--', label=f'Median: {median_lum:.2f}')
+                                            ax2.set_xlabel('Luminance Value')
+                                            ax2.set_ylabel('Frequency')
+                                            ax2.set_title('Luminance Distribution')
+                                            ax2.legend()
+                                            ax2.grid(True, alpha=0.3)
+                                            
+                                            # Box plot
+                                            ax3.boxplot(luminance.flatten(), vert=True)
+                                            ax3.set_ylabel('Luminance Value')
+                                            ax3.set_title('Luminance Box Plot')
+                                            ax3.grid(True, alpha=0.3)
+                                            
+                                            st.pyplot(fig2)
+                                            
+                                            # Download histogram
+                                            buf2 = io.BytesIO()
+                                            fig2.savefig(buf2, format="png", dpi=300, bbox_inches='tight')
+                                            buf2.seek(0)
+                                            st.download_button("📥 Download Distribution Plot", buf2, 
+                                                            file_name="luminance_distribution.png", mime="image/png")
                                     
                                     with tab3:
-                                        st.markdown("### Interactive Threshold Analysis")
+                                        with st.expander("Interactive Threshold Analysis", expanded=False):
+                                        # st.markdown("### Interactive Threshold Analysis")
                                         
-                                        col_a, col_b = st.columns([1, 2])
-                                        
-                                        with col_a:
-                                            threshold_low = st.slider("Lower Threshold", 0.0, 255.0, 50.0, 1.0)
-                                            threshold_high = st.slider("Upper Threshold", 0.0, 255.0, 200.0, 1.0)
+                                            col_a, col_b = st.columns([1, 2])
                                             
-                                            # Ensure proper ordering
-                                            if threshold_low >= threshold_high:
-                                                st.error("Lower threshold must be less than upper threshold!")
-                                            else:
-                                                # Calculate regions
-                                                dark_mask = luminance < threshold_low
-                                                bright_mask = luminance > threshold_high
-                                                mid_mask = (luminance >= threshold_low) & (luminance <= threshold_high)
+                                            with col_a:
+                                                threshold_low = st.slider("Lower Threshold", 0.0, 255.0, 50.0, 1.0)
+                                                threshold_high = st.slider("Upper Threshold", 0.0, 255.0, 200.0, 1.0)
                                                 
-                                                # Statistics for each region
-                                                dark_percent = np.sum(dark_mask) / luminance.size * 100
-                                                bright_percent = np.sum(bright_mask) / luminance.size * 100
-                                                mid_percent = np.sum(mid_mask) / luminance.size * 100
-                                                
-                                                st.metric("Dark Regions %", f"{dark_percent:.1f}%")
-                                                st.metric("Mid-tone Regions %", f"{mid_percent:.1f}%")
-                                                st.metric("Bright Regions %", f"{bright_percent:.1f}%")
+                                                # Ensure proper ordering
+                                                if threshold_low >= threshold_high:
+                                                    st.error("Lower threshold must be less than upper threshold!")
+                                                else:
+                                                    # Calculate regions
+                                                    dark_mask = luminance < threshold_low
+                                                    bright_mask = luminance > threshold_high
+                                                    mid_mask = (luminance >= threshold_low) & (luminance <= threshold_high)
+                                                    
+                                                    # Statistics for each region
+                                                    dark_percent = np.sum(dark_mask) / luminance.size * 100
+                                                    bright_percent = np.sum(bright_mask) / luminance.size * 100
+                                                    mid_percent = np.sum(mid_mask) / luminance.size * 100
+                                                    
+                                                    st.metric("Dark Regions %", f"{dark_percent:.1f}%")
+                                                    st.metric("Mid-tone Regions %", f"{mid_percent:.1f}%")
+                                                    st.metric("Bright Regions %", f"{bright_percent:.1f}%")
+                                            
+                                            with col_b:
+                                                if threshold_low < threshold_high:
+                                                    # Create colored overlay
+                                                    overlay = np.zeros((*luminance.shape, 3), dtype=np.uint8)
+                                                    overlay[dark_mask] = [0, 0, 255]      # Blue for dark
+                                                    overlay[mid_mask] = [0, 255, 0]       # Green for mid-tone
+                                                    overlay[bright_mask] = [255, 0, 0]    # Red for bright
+                                                    
+                                                    st.image(overlay, caption="Threshold Analysis: Blue=Dark, Green=Mid-tone, Red=Bright", 
+                                                        use_column_width=True)
                                         
-                                        with col_b:
-                                            if threshold_low < threshold_high:
-                                                # Create colored overlay
-                                                overlay = np.zeros((*luminance.shape, 3), dtype=np.uint8)
-                                                overlay[dark_mask] = [0, 0, 255]      # Blue for dark
-                                                overlay[mid_mask] = [0, 255, 0]       # Green for mid-tone
-                                                overlay[bright_mask] = [255, 0, 0]    # Red for bright
-                                                
-                                                st.image(overlay, caption="Threshold Analysis: Blue=Dark, Green=Mid-tone, Red=Bright", 
-                                                    use_column_width=True)
-                                    
                                     with tab4:
-                                        st.markdown("### Data Export Options")
+                                        with st.expander("Data Export Options", expanded=False):
+                                        # st.markdown("### Data Export Options")
                                         
-                                        # Prepare statistics DataFrame
-                                        stats_data = {
-                                            'Metric': ['Mean', 'Median', 'Standard Deviation', 'Minimum', 'Maximum', 
-                                                    '25th Percentile', '75th Percentile', 'Range'],
-                                            'Value': [avg_lum, median_lum, std_lum, min_lum, max_lum, p25, p75, max_lum - min_lum]
-                                        }
-                                        stats_df = pd.DataFrame(stats_data)
-                                        
-                                        st.subheader("📈 Statistics Summary")
-                                        st.dataframe(stats_df, use_container_width=True)
-                                        
-                                        # Export options
-                                        col_export1, col_export2, col_export3 = st.columns(3)
-                                        
-                                        with col_export1:
-                                            # Export statistics as CSV
-                                            stats_csv = stats_df.to_csv(index=False)
-                                            st.download_button("📊 Download Statistics CSV", stats_csv, 
-                                                            file_name="luminance_statistics.csv", mime="text/csv")
-                                        
-                                        with col_export2:
-                                            # Export raw luminance data (sampled for large images)
-                                            sample_size = min(10000, luminance.size)
-                                            sampled_luminance = np.random.choice(luminance.flatten(), sample_size, replace=False)
-                                            luminance_df = pd.DataFrame({'Luminance': sampled_luminance})
-                                            luminance_csv = luminance_df.to_csv(index=False)
-                                            st.download_button("🔢 Download Sample Data CSV", luminance_csv, 
-                                                            file_name="luminance_data_sample.csv", mime="text/csv")
-                                        
-                                        with col_export3:
-                                            # Export analysis report
-                                            report = f"""Luminance Analysis Report
-                            Image: {uploaded_file.name}
-                            Analysis Method: {color_space}
-                            Original Size: {original_size[0]} x {original_size[1]} pixels
-                            Processed Size: {resized_size[0]} x {resized_size[1]} pixels
-
-                            Statistical Summary:
-                            - Mean Luminance: {avg_lum:.2f}
-                            - Median Luminance: {median_lum:.2f}
-                            - Standard Deviation: {std_lum:.2f}
-                            - Range: {min_lum:.2f} - {max_lum:.2f}
-                            - 25th Percentile: {p25:.2f}
-                            - 75th Percentile: {p75:.2f}
-                            - Coefficient of Variation: {(std_lum/avg_lum)*100:.2f}%
-
-                            Generated by Advanced Luminous Analyzer Pro
-                            """
-                                            st.download_button("📝 Download Analysis Report", report, 
-                                                            file_name="luminance_analysis_report.txt", mime="text/plain")
-                                        
-                                        # Additional analysis insights
-                                        st.subheader("🔍 Analysis Insights")
-                                        
-                                        cv = (std_lum / avg_lum) * 100 if avg_lum > 0 else 0
-                                        
-                                        insights = []
-                                        if cv < 20:
-                                            insights.append("📊 Low variability - Image has relatively uniform brightness")
-                                        elif cv > 50:
-                                            insights.append("📊 High variability - Image has significant brightness contrast")
-                                        else:
-                                            insights.append("📊 Moderate variability - Image has balanced brightness distribution")
-                                        
-                                        if avg_lum < 85:
-                                            insights.append("🌙 Overall dark image - Consider brightness adjustment")
-                                        elif avg_lum > 170:
-                                            insights.append("☀️ Overall bright image - Well-lit or high exposure")
-                                        else:
-                                            insights.append("⚖️ Well-balanced brightness levels")
-                                        
-                                        if abs(avg_lum - median_lum) > 10:
-                                            insights.append("⚠️ Skewed distribution - Mean and median differ significantly")
-                                        else:
-                                            insights.append("✅ Normal distribution - Mean and median are similar")
-                                        
-                                        for insight in insights:
-                                            st.write(insight)
+                                            # Prepare statistics DataFrame
+                                            stats_data = {
+                                                'Metric': ['Mean', 'Median', 'Standard Deviation', 'Minimum', 'Maximum', 
+                                                        '25th Percentile', '75th Percentile', 'Range'],
+                                                'Value': [avg_lum, median_lum, std_lum, min_lum, max_lum, p25, p75, max_lum - min_lum]
+                                            }
+                                            stats_df = pd.DataFrame(stats_data)
                                             
+                                            st.subheader("📈 Statistics Summary")
+                                            st.dataframe(stats_df, use_container_width=True)
+                                            
+                                            # Export options
+                                            col_export1, col_export2, col_export3 = st.columns(3)
+                                            
+                                            with col_export1:
+                                                # Export statistics as CSV
+                                                stats_csv = stats_df.to_csv(index=False)
+                                                st.download_button("📊 Download Statistics CSV", stats_csv, 
+                                                                file_name="luminance_statistics.csv", mime="text/csv")
+                                            
+                                            with col_export2:
+                                                # Export raw luminance data (sampled for large images)
+                                                sample_size = min(10000, luminance.size)
+                                                sampled_luminance = np.random.choice(luminance.flatten(), sample_size, replace=False)
+                                                luminance_df = pd.DataFrame({'Luminance': sampled_luminance})
+                                                luminance_csv = luminance_df.to_csv(index=False)
+                                                st.download_button("🔢 Download Sample Data CSV", luminance_csv, 
+                                                                file_name="luminance_data_sample.csv", mime="text/csv")
+                                            
+                                            with col_export3:
+                                                # Export analysis report
+                                                report = f"""Luminance Analysis Report
+                                Image: {uploaded_file.name}
+                                Analysis Method: {color_space}
+                                Original Size: {original_size[0]} x {original_size[1]} pixels
+                                Processed Size: {resized_size[0]} x {resized_size[1]} pixels
+
+                                Statistical Summary:
+                                - Mean Luminance: {avg_lum:.2f}
+                                - Median Luminance: {median_lum:.2f}
+                                - Standard Deviation: {std_lum:.2f}
+                                - Range: {min_lum:.2f} - {max_lum:.2f}
+                                - 25th Percentile: {p25:.2f}
+                                - 75th Percentile: {p75:.2f}
+                                - Coefficient of Variation: {(std_lum/avg_lum)*100:.2f}%
+
+                                Generated by Advanced Luminous Analyzer Pro
+                                """
+                                                st.download_button("📝 Download Analysis Report", report, 
+                                                                file_name="luminance_analysis_report.txt", mime="text/plain")
+                                            
+                                            # Additional analysis insights
+                                            st.subheader("🔍 Analysis Insights")
+                                            
+                                            cv = (std_lum / avg_lum) * 100 if avg_lum > 0 else 0
+                                            
+                                            insights = []
+                                            if cv < 20:
+                                                insights.append("📊 Low variability - Image has relatively uniform brightness")
+                                            elif cv > 50:
+                                                insights.append("📊 High variability - Image has significant brightness contrast")
+                                            else:
+                                                insights.append("📊 Moderate variability - Image has balanced brightness distribution")
+                                        
+                                            if avg_lum < 85:
+                                                insights.append("🌙 Overall dark image - Consider brightness adjustment")
+                                            elif avg_lum > 170:
+                                                insights.append("☀️ Overall bright image - Well-lit or high exposure")
+                                            else:
+                                                insights.append("⚖️ Well-balanced brightness levels")
+                                            
+                                            if abs(avg_lum - median_lum) > 10:
+                                                insights.append("⚠️ Skewed distribution - Mean and median differ significantly")
+                                            else:
+                                                insights.append("✅ Normal distribution - Mean and median are similar")
+                                            
+                                            for insight in insights:
+                                                st.write(insight)
+                                    st.markdown("---")
                                 except Exception as e:
                                     st.error(f"An error occurred while processing the image: {str(e)}")
                                     st.write("Please ensure you've uploaded a valid image file and try again.")
