@@ -4531,11 +4531,12 @@ def main():
                     
             elif page_E == "Metadata Forensics":
                 page1 = st.sidebar.selectbox("Select Analysis Tool", 
-                        ["EXIF Data",
-                         "Geolocation Data",
-                        "Thumbnail Analysis",
-                        "Timestamp Analysis",
-                        "Software Detection"],
+                        # ["EXIF Data",
+                        #  "Geolocation Data",
+                        # "Thumbnail Analysis",
+                        # "Timestamp Analysis",
+                        # "Software Detection"],
+                        ["Geolocation Data"],
                         help="Choose Analysis Tool"
                         )
                 
