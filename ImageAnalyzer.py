@@ -3821,6 +3821,20 @@ def main():
                             border-radius: 0.5rem;
                             margin: 0.5rem 0;
                         }
+                        /* Light Mode */
+                        @media (prefers-color-scheme: light) {
+                            .metric-container {
+                                background-color: #f0f2f6;
+                                color: #000;
+                            }
+                        }
+
+                        /* Dark Mode */
+                        @media (prefers-color-scheme: dark) {
+                            .metric-container {
+                                background-color: #1e1e1e;
+                                color: #fff;
+                            }
                         .artifact-high { color: #ff4444; font-weight: bold; }
                         .artifact-medium { color: #ff8800; font-weight: bold; }
                         .artifact-low { color: #44ff44; font-weight: bold; }
@@ -3964,8 +3978,8 @@ def main():
                         img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
                         
                         # Display original image
-                        st.image(img_rgb, caption="🖼️ Original Image", use_column_width=True)
-                        
+                        # st.image(img_rgb, caption="🖼️ Original Image", use_column_width=True)
+                        st.markdown("---")
                         # Control panel
                         with st.sidebar:
                             st.markdown("---")
@@ -3975,15 +3989,17 @@ def main():
                                 show_advanced = st.checkbox("Show Advanced Visualizations", True)
                             st.markdown("---")    
                         # Basic image info
-                        st.markdown("### 📊 Image Information")
-                        st.info(f"""
-                        **Dimensions**: {img_rgb.shape[1]} × {img_rgb.shape[0]}
-                        **Channels**: {img_rgb.shape[2]}
-                        **File Size**: {len(file_bytes)} bytes
-                        """)
+                        # st.markdown("### 📊 Image Information")
+                        # st.info(f"""
+                        # **Dimensions**: {img_rgb.shape[1]} × {img_rgb.shape[0]}
+                        # **Channels**: {img_rgb.shape[2]}
+                        # **File Size**: {len(file_bytes)} bytes
+                        # """)
+                        # st.info(f"📊 **Overall Image Quality Score:** {quality_score:.1f}/100")
                                 
                         
                         # Analysis
+                        # st.markdown("---")
                         st.header("🔍 Artifact Analysis Results")
                         
                         # Create reference image for comparison (slightly blurred)
@@ -4036,13 +4052,22 @@ def main():
                                 <small>Level: {mosquito_level}</small>
                             </div>
                             """, unsafe_allow_html=True)
+
+                        # with col5:
+                        #     st.markdown(f"""
+                        #     <div class="metric-container">
+                        #         <h4>📊 Quality Score</h4>
+                        #         <p class="{block_class}">{quality_score:.1f}</p>
+                        #     </div>
+                        #     """, unsafe_allow_html=True)
                         
                         # Overall quality score
-                        st.markdown(f"""
-                        <div style="text-align: center; padding: 1rem; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0.5rem; margin: 1rem 0;">
-                            <h3>Overall Image Quality Score: {quality_score:.1f}/100</h3>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.info(f"📊 **Overall Image Quality Score:** {quality_score:.1f}/100")
+                        # st.markdown(f"""
+                        # <div style="text-align: center; padding: 1rem; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0.5rem; margin: 1rem 0;">
+                        #     <h3>Overall Image Quality Score: {quality_score:.1f}/100</h3>
+                        # </div>
+                        # """, unsafe_allow_html=True)
                         
                         # Visualizations
                         if show_advanced:
@@ -4050,107 +4075,112 @@ def main():
                             st.header("🎨 Advanced Visualizations")
                             
                             # DCT Analysis
-                            st.subheader("🔍 DCT Coefficient Analysis")
-                            dct_map, high_freq_map = visualize_dct(img_gray, block_size)
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                fig1, ax1 = plt.subplots(figsize=(8, 6))
-                                im1 = ax1.imshow(dct_map, cmap='hot', interpolation='nearest')
-                                ax1.set_title("DCT Coefficient Energy Map")
-                                ax1.axis("off")
-                                plt.colorbar(im1, ax=ax1, shrink=0.8)
-                                st.pyplot(fig1)
-                            
-                            with col2:
-                                fig2, ax2 = plt.subplots(figsize=(8, 6))
-                                im2 = ax2.imshow(high_freq_map, cmap='viridis', interpolation='nearest')
-                                ax2.set_title("High Frequency Content Map")
-                                ax2.axis("off")
-                                plt.colorbar(im2, ax=ax2, shrink=0.8)
-                                st.pyplot(fig2)
-                            
+                            with st.expander("DCT Coefficient Analysis", expanded=False):
+                            # st.subheader("🔍 DCT Coefficient Analysis")
+                                dct_map, high_freq_map = visualize_dct(img_gray, block_size)
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    fig1, ax1 = plt.subplots(figsize=(8, 6))
+                                    im1 = ax1.imshow(dct_map, cmap='hot', interpolation='nearest')
+                                    ax1.set_title("DCT Coefficient Energy Map")
+                                    ax1.axis("off")
+                                    plt.colorbar(im1, ax=ax1, shrink=0.8)
+                                    st.pyplot(fig1)
+                                
+                                with col2:
+                                    fig2, ax2 = plt.subplots(figsize=(8, 6))
+                                    im2 = ax2.imshow(high_freq_map, cmap='viridis', interpolation='nearest')
+                                    ax2.set_title("High Frequency Content Map")
+                                    ax2.axis("off")
+                                    plt.colorbar(im2, ax=ax2, shrink=0.8)
+                                    st.pyplot(fig2)
+                                
                             # Ringing Artifacts
-                            st.subheader("🌊 Ringing Artifacts Detection")
-                            laplacian_abs, sobel_magnitude, canny = detect_ringing_artifacts(img_gray)
-                            
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                fig3, ax3 = plt.subplots(figsize=(6, 6))
-                                ax3.imshow(laplacian_abs, cmap='plasma')
-                                ax3.set_title("Laplacian Edge Detection")
-                                ax3.axis("off")
-                                st.pyplot(fig3)
-                            
-                            with col2:
-                                fig4, ax4 = plt.subplots(figsize=(6, 6))
-                                ax4.imshow(sobel_magnitude, cmap='plasma')
-                                ax4.set_title("Sobel Edge Magnitude")
-                                ax4.axis("off")
-                                st.pyplot(fig4)
-                            
-                            with col3:
-                                fig5, ax5 = plt.subplots(figsize=(6, 6))
-                                ax5.imshow(canny, cmap='gray')
-                                ax5.set_title("Canny Edge Detection")
-                                ax5.axis("off")
-                                st.pyplot(fig5)
+                            with st.expander("Ringing Artifacts Detection", expanded=False):
+                            # st.subheader("🌊 Ringing Artifacts Detection")
+                                laplacian_abs, sobel_magnitude, canny = detect_ringing_artifacts(img_gray)
+                                
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    fig3, ax3 = plt.subplots(figsize=(6, 6))
+                                    ax3.imshow(laplacian_abs, cmap='plasma')
+                                    ax3.set_title("Laplacian Edge Detection")
+                                    ax3.axis("off")
+                                    st.pyplot(fig3)
+                                
+                                with col2:
+                                    fig4, ax4 = plt.subplots(figsize=(6, 6))
+                                    ax4.imshow(sobel_magnitude, cmap='plasma')
+                                    ax4.set_title("Sobel Edge Magnitude")
+                                    ax4.axis("off")
+                                    st.pyplot(fig4)
+                                
+                                with col3:
+                                    fig5, ax5 = plt.subplots(figsize=(6, 6))
+                                    ax5.imshow(canny, cmap='gray')
+                                    ax5.set_title("Canny Edge Detection")
+                                    ax5.axis("off")
+                                    st.pyplot(fig5)
                             
                             # Mosquito Noise Visualization
-                            st.subheader("🦟 Mosquito Noise Visualization")
-                            fig6, ax6 = plt.subplots(figsize=(10, 6))
-                            im6 = ax6.imshow(mosquito_map, cmap='inferno', interpolation='nearest')
-                            ax6.set_title("Mosquito Noise Around Edges")
-                            ax6.axis("off")
-                            plt.colorbar(im6, ax=ax6, shrink=0.8)
-                            st.pyplot(fig6)
-                        
+                            with st.expander("Mosquito Noise Visualization", expanded=False):
+                            # st.subheader("🦟 Mosquito Noise Visualization")
+                                fig6, ax6 = plt.subplots(figsize=(10, 6))
+                                im6 = ax6.imshow(mosquito_map, cmap='inferno', interpolation='nearest')
+                                ax6.set_title("Mosquito Noise Around Edges")
+                                ax6.axis("off")
+                                plt.colorbar(im6, ax=ax6, shrink=0.8)
+                                st.pyplot(fig6)
+                            
                         # Detailed Analysis Report
                         st.markdown("---")
                         st.header("📋 Detailed Analysis Report")
+                        with st.expander("JPEG Artifact Analysis Report", expanded=False):
                         
-                        report = f"""
-                        ## JPEG Artifact Analysis Report
-                        
-                        ### Image Specifications
-                        - **Resolution**: {img_rgb.shape[1]} × {img_rgb.shape[0]} pixels
-                        - **File Size**: {len(file_bytes):,} bytes
-                        - **Aspect Ratio**: {img_rgb.shape[1]/img_rgb.shape[0]:.2f}:1
-                        
-                        ### Artifact Detection Results
-                        
-                        #### 1. Blockiness Analysis
-                        - **Score**: {blockiness_score:.2f}
-                        - **Assessment**: {block_level} level blockiness detected
-                        - **Interpretation**: {'Significant 8×8 block boundaries visible' if blockiness_score > 15 else 'Moderate block artifacts present' if blockiness_score > 5 else 'Minimal blockiness detected'}
-                        
-                        #### 2. Signal Quality Metrics
-                        - **PSNR**: {psnr:.2f} dB
-                        - **SSIM**: {ssim:.3f}
-                        - **Quality Rating**: {'Excellent' if psnr > 35 else 'Good' if psnr > 30 else 'Fair' if psnr > 25 else 'Poor'}
-                        
-                        #### 3. Mosquito Noise Assessment
-                        - **Score**: {mosquito_score:.2f}
-                        - **Level**: {mosquito_level}
-                        - **Impact**: {'High-frequency noise visible around edges' if mosquito_score > 50 else 'Moderate noise around sharp edges' if mosquito_score > 20 else 'Minimal mosquito noise detected'}
-                        
-                        ### Overall Quality Assessment
-                        - **Composite Score**: {quality_score:.1f}/100
-                        - **Grade**: {'A' if quality_score > 85 else 'B' if quality_score > 70 else 'C' if quality_score > 55 else 'D'}
-                        
-                        ### Recommendations
-                        """
-                        
-                        if quality_score > 85:
-                            report += "- ✅ Excellent image quality with minimal compression artifacts\n- No action needed"
-                        elif quality_score > 70:
-                            report += "- ✅ Good image quality with acceptable compression\n- Suitable for most applications"
-                        elif quality_score > 55:
-                            report += "- ⚠️ Moderate artifacts present\n- Consider re-encoding with higher quality settings\n- May need preprocessing for critical applications"
-                        else:
-                            report += "- ❌ Significant compression artifacts detected\n- Recommend obtaining higher quality source\n- Consider denoising and artifact reduction techniques"
-                        
-                        st.markdown(report)
+                            report = f"""
+                            ## JPEG Artifact Analysis Report
+                            
+                            ### Image Specifications
+                            - **Resolution**: {img_rgb.shape[1]} × {img_rgb.shape[0]} pixels
+                            - **File Size**: {len(file_bytes):,} bytes
+                            - **Aspect Ratio**: {img_rgb.shape[1]/img_rgb.shape[0]:.2f}:1
+                            
+                            ### Artifact Detection Results
+                            
+                            #### 1. Blockiness Analysis
+                            - **Score**: {blockiness_score:.2f}
+                            - **Assessment**: {block_level} level blockiness detected
+                            - **Interpretation**: {'Significant 8×8 block boundaries visible' if blockiness_score > 15 else 'Moderate block artifacts present' if blockiness_score > 5 else 'Minimal blockiness detected'}
+                            
+                            #### 2. Signal Quality Metrics
+                            - **PSNR**: {psnr:.2f} dB
+                            - **SSIM**: {ssim:.3f}
+                            - **Quality Rating**: {'Excellent' if psnr > 35 else 'Good' if psnr > 30 else 'Fair' if psnr > 25 else 'Poor'}
+                            
+                            #### 3. Mosquito Noise Assessment
+                            - **Score**: {mosquito_score:.2f}
+                            - **Level**: {mosquito_level}
+                            - **Impact**: {'High-frequency noise visible around edges' if mosquito_score > 50 else 'Moderate noise around sharp edges' if mosquito_score > 20 else 'Minimal mosquito noise detected'}
+                            
+                            ### Overall Quality Assessment
+                            - **Composite Score**: {quality_score:.1f}/100
+                            - **Grade**: {'A' if quality_score > 85 else 'B' if quality_score > 70 else 'C' if quality_score > 55 else 'D'}
+                            
+                            ### Recommendations
+                            """
+                            
+                            if quality_score > 85:
+                                report += "- ✅ Excellent image quality with minimal compression artifacts\n- No action needed"
+                            elif quality_score > 70:
+                                report += "- ✅ Good image quality with acceptable compression\n- Suitable for most applications"
+                            elif quality_score > 55:
+                                report += "- ⚠️ Moderate artifacts present\n- Consider re-encoding with higher quality settings\n- May need preprocessing for critical applications"
+                            else:
+                                report += "- ❌ Significant compression artifacts detected\n- Recommend obtaining higher quality source\n- Consider denoising and artifact reduction techniques"
+                            
+                            st.markdown(report)
+                        st.markdown("---")
 
                     else:
                         st.info("📥 Please upload a JPEG image to begin comprehensive artifact analysis.")
@@ -4336,6 +4366,7 @@ def main():
                     Upload a JPEG image to examine its quantization tables and compare them with standard tables.</p>
                     </div>
                     """, unsafe_allow_html=True)
+
                     # st.title("🧮 Advanced JPEG Quantization Table Analysis")
 
                     # st.markdown("""
@@ -4361,24 +4392,26 @@ def main():
                         if img.format != 'JPEG':
                             st.error("⚠️ Only JPEG images contain quantization tables.")
                         else:
-                            col1, col2 = st.columns([1, 2])
+                            # col1, col2 = st.columns([1, 2])
                             
-                            with col1:
-                                st.image(img, caption="Uploaded Image", use_column_width=True)
+                            # with col1:
+                            #     st.image(img, caption="Uploaded Image", use_column_width=True)
                                 
                                 # Image metadata
-                                st.subheader("📋 Image Info")
-                                st.write(f"**Format:** {img.format}")
-                                st.write(f"**Size:** {img.size[0]} × {img.size[1]} pixels")
-                                st.write(f"**Mode:** {img.mode}")
+                                # st.subheader("📋 Image Info")
+                                # st.write(f"**Format:** {img.format}")
+                                # st.write(f"**Size:** {img.size[0]} × {img.size[1]} pixels")
+                                # st.write(f"**Mode:** {img.mode}")
                                 
-                                if hasattr(img, 'info') and 'dpi' in img.info:
-                                    st.write(f"**DPI:** {img.info['dpi']}")
+                                # if hasattr(img, 'info') and 'dpi' in img.info:
+                                #     st.write(f"**DPI:** {img.info['dpi']}")
 
-                            with col2:
+                            # with col2:
+                                st.markdown("---")
                                 st.subheader("📊 Quantization Table Analysis")
                                 
                                 qtables = extract_quantization_tables(img)
+
 
                                 if not qtables:
                                     st.warning("⚠️ No quantization tables found. This might not be a standard JPEG or the tables are not accessible.")
@@ -4394,78 +4427,84 @@ def main():
                                             st.markdown(f"### 🔢 Quantization Table {table_id}")
                                             
                                             # Estimate quality
-                                            estimated_quality = estimate_quality_factor(table)
-                                            st.metric("Estimated JPEG Quality", f"{estimated_quality}%")
+                                            with st.expander("View Raw Quantization Values"):
+                                                estimated_quality = estimate_quality_factor(table)
+                                                st.metric("Estimated JPEG Quality", f"{estimated_quality}%")
                                             
                                             # Show raw values in expandable section
-                                            with st.expander("View Raw Quantization Values"):
+                                            
                                                 st.dataframe(np.array(table).reshape((8, 8)))
                                             
                                             # Plot the table
-                                            plot_quant_table(table, table_id, use_seaborn)
+                                            with st.expander("Quantization Visualization", expanded=False):
+                                                plot_quant_table(table, table_id, use_seaborn)
                                             
                                             # Compression analysis
-                                            st.subheader("🔍 Compression Characteristics")
-                                            analysis = analyze_compression_characteristics(table)
-                                            
-                                            col_a, col_b, col_c = st.columns(3)
-                                            with col_a:
-                                                st.metric("Low Freq Avg", f"{analysis['low_freq_preservation']:.1f}")
-                                                st.metric("High Freq Avg", f"{analysis['high_freq_preservation']:.1f}")
-                                            with col_b:
-                                                st.metric("Edge Preservation", f"{analysis['edge_preservation_ratio']:.2f}")
-                                                st.metric("Uniformity (std)", f"{analysis['uniformity']:.1f}")
-                                            with col_c:
-                                                st.metric("Min Quantization", f"{analysis['min_quantization']}")
-                                                st.metric("Max Quantization", f"{analysis['max_quantization']}")
+                                            with st.expander("Compression Characteristics", expanded=False):
+                                            # st.subheader("🔍 Compression Characteristics")
+                                                analysis = analyze_compression_characteristics(table)
+                                                
+                                                col_a, col_b, col_c = st.columns(3)
+                                                with col_a:
+                                                    st.metric("Low Freq Avg", f"{analysis['low_freq_preservation']:.1f}")
+                                                    st.metric("High Freq Avg", f"{analysis['high_freq_preservation']:.1f}")
+                                                with col_b:
+                                                    st.metric("Edge Preservation", f"{analysis['edge_preservation_ratio']:.2f}")
+                                                    st.metric("Uniformity (std)", f"{analysis['uniformity']:.1f}")
+                                                with col_c:
+                                                    st.metric("Min Quantization", f"{analysis['min_quantization']}")
+                                                    st.metric("Max Quantization", f"{analysis['max_quantization']}")
                                             
                                             # Comparison with standard
-                                            st.subheader(f"📈 Comparison with Standard {compare_standard.title()} Table")
-                                            comparison = compare_to_standard(table, compare_standard)
-                                            
-                                            col_diff1, col_diff2 = st.columns(2)
-                                            
-                                            with col_diff1:
-                                                st.metric("Mean Squared Error", f"{comparison['mse']:.2f}")
-                                                st.metric("Mean Absolute Error", f"{comparison['mae']:.2f}")
-                                            
-                                            with col_diff2:
-                                                # Plot difference heatmap
-                                                fig, ax = plt.subplots(figsize=(8, 6))
-                                                if use_seaborn:
-                                                    sns.heatmap(comparison['difference'], annot=True, fmt='.0f', 
-                                                            cmap='RdBu_r', center=0, ax=ax,
-                                                            cbar_kws={'label': 'Difference from Standard'})
-                                                else:
-                                                    im = ax.imshow(comparison['difference'], cmap='RdBu_r')
-                                                    plt.colorbar(im, ax=ax, label='Difference from Standard')
-                                                    
-                                                ax.set_title(f"Difference from Standard {compare_standard.title()} Table")
-                                                ax.set_xlabel("Frequency (Horizontal)")
-                                                ax.set_ylabel("Frequency (Vertical)")
-                                                st.pyplot(fig)
-
-                    # Educational section
-                    with st.expander("ℹ️ About JPEG Quantization Tables"):
-                        st.markdown("""
-                        **JPEG Quantization Tables** are 8×8 matrices that control compression quality:
-                        
-                        - **Lower values** = Higher quality, less compression
-                        - **Higher values** = Lower quality, more compression
-                        - **Top-left corner** contains low-frequency coefficients (most important)
-                        - **Bottom-right corner** contains high-frequency coefficients (fine details)
-                        
-                        **Standard Tables:**
-                        - **Luminance (Y)**: Used for brightness information
-                        - **Chrominance (Cb, Cr)**: Used for color information
-                        
-                        **Quality Factor Estimation:**
-                        - Quality 100: Minimal compression
-                        - Quality 75-90: High quality
-                        - Quality 50: Balanced
-                        - Quality 10-25: High compression
-                        """)
-                    st.markdown("---")
+                                            with st.expander(f"Comparison with Standard {compare_standard.title()} Table", expanded=False):
+                                                # st.subheader(f"📈 Comparison with Standard {compare_standard.title()} Table")
+                                                comparison = compare_to_standard(table, compare_standard)
+                                                
+                                                col_diff1, col_diff2 = st.columns(2)
+                                                
+                                                with col_diff1:
+                                                    st.metric("Mean Squared Error", f"{comparison['mse']:.2f}")
+                                                    st.metric("Mean Absolute Error", f"{comparison['mae']:.2f}")
+                                                
+                                                with col_diff2:
+                                                    # Plot difference heatmap
+                                                    fig, ax = plt.subplots(figsize=(8, 6))
+                                                    if use_seaborn:
+                                                        sns.heatmap(comparison['difference'], annot=True, fmt='.0f', 
+                                                                cmap='RdBu_r', center=0, ax=ax,
+                                                                cbar_kws={'label': 'Difference from Standard'})
+                                                    else:
+                                                        im = ax.imshow(comparison['difference'], cmap='RdBu_r')
+                                                        plt.colorbar(im, ax=ax, label='Difference from Standard')
+                                                        
+                                                    ax.set_title(f"Difference from Standard {compare_standard.title()} Table")
+                                                    ax.set_xlabel("Frequency (Horizontal)")
+                                                    ax.set_ylabel("Frequency (Vertical)")
+                                                    st.pyplot(fig)
+                                            st.markdown("---")
+                    else:
+                        # Educational section
+                        with st.expander("ℹ️ About JPEG Quantization Tables"):
+                            st.markdown("""
+                            **JPEG Quantization Tables** are 8×8 matrices that control compression quality:
+                            
+                            - **Lower values** = Higher quality, less compression
+                            - **Higher values** = Lower quality, more compression
+                            - **Top-left corner** contains low-frequency coefficients (most important)
+                            - **Bottom-right corner** contains high-frequency coefficients (fine details)
+                            
+                            **Standard Tables:**
+                            - **Luminance (Y)**: Used for brightness information
+                            - **Chrominance (Cb, Cr)**: Used for color information
+                            
+                            **Quality Factor Estimation:**
+                            - Quality 100: Minimal compression
+                            - Quality 75-90: High quality
+                            - Quality 50: Balanced
+                            - Quality 10-25: High compression
+                            """)
+                        st.markdown("---")
+                    
 
                 elif page1 == "Compression History":
                     st.markdown("""
@@ -4868,11 +4907,11 @@ def main():
                             
                             # Image card container
                             with st.container():
-                                st.markdown(f"""
-                                <div class="info-card">
-                                    <h2>📷 {uploaded_file.name}</h2>
-                                </div>
-                                """, unsafe_allow_html=True)
+                                # st.markdown(f"""
+                                # <div class="info-card">
+                                #     <h2>📷 {uploaded_file.name}</h2>
+                                # </div>
+                                # """, unsafe_allow_html=True)
                                 
                                 try:
                                     image = Image.open(uploaded_file)
@@ -4883,10 +4922,10 @@ def main():
                                     
                                     with col1:
                                         # Enhanced image display
+                                        resized_image = image.resize((500, 350))
                                         st.image(
-                                            image, 
+                                            resized_image, 
                                             caption=f"🖼️ {uploaded_file.name}", 
-                                            use_column_width=True,
                                             clamp=True
                                         )
                                         
@@ -4938,17 +4977,19 @@ def main():
                                     
                                     # Show coordinates if GPS data exists
                                     if "GPSInfo" in exif_data and gps_data:
-                                        st.markdown("### 📍 Location Coordinates")
-                                        
-                                        lat = gps_data["Parsed Data"]['Latitude']
-                                        lon = gps_data["Parsed Data"]['Longitude']
-                                        
-                                        coord_formats = format_coordinates(lat, lon)
-                                        
-                                        # Display coordinates in styled cards
-                                        for format_name, coord_str in coord_formats.items():
-                                            is_url = "URL" in format_name
-                                            create_coordinate_card(format_name, coord_str, is_url)
+                                        st.markdown("---")
+                                        with st.expander("Location Coordinates", expanded=False):
+                                            # st.markdown("### 📍 Location Coordinates")
+                                            
+                                            lat = gps_data["Parsed Data"]['Latitude']
+                                            lon = gps_data["Parsed Data"]['Longitude']
+                                            
+                                            coord_formats = format_coordinates(lat, lon)
+                                            
+                                            # Display coordinates in styled cards
+                                            for format_name, coord_str in coord_formats.items():
+                                                is_url = "URL" in format_name
+                                                create_coordinate_card(format_name, coord_str, is_url)
                                     
                                     # Enhanced map display
                                     if "GPSInfo" in exif_data and gps_data:
@@ -5009,6 +5050,7 @@ def main():
                                         ).add_to(map_)
                                         
                                         st_folium(map_, width=700, height=450)
+                                        st.markdown("---")
                                     
                                     # Show all EXIF data if requested
                                     if show_all_exif and all_exif:
