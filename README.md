@@ -69,3 +69,6 @@ Open your browser to `http://localhost:8501`
 
 - Check for malware using VirusTotal
 
+## LICENSE
+
+[BSD 3-Clause License](LICENSE)
