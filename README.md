@@ -1,4 +1,5 @@
 # Advanced Image Metadata & Security Analyzer(AIMSA)
+<div align="center">
 # IMAGEANALYZER00
 
 _Unlock Insights, Transform Images, Empower Decisions_
@@ -21,6 +22,8 @@ _Unlock Insights, Transform Images, Empower Decisions_
 ![SciPy](https://img.shields.io/badge/SciPy-8CAAE6?style=for-the-badge&logo=scipy&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)
 ![pandas](https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
+
+</div>
 
 ## Overview
 
