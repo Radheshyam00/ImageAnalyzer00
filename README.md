@@ -108,9 +108,21 @@ Open your browser to `http://localhost:8501`
 
 - Check for malware using VirusTotal
 
-## LICENSE
+## License
 
-[BSD 3-Clause License](LICENSE)
+This project is licensed under the [BSD 3-Clause License](LICENSE) - see the LICENSE file for details.
+
+---
+
+## Support
+
+If you encounter any issues or have questions:
+
+- Open an issue on [GitHub Issues](https://github.com/Radheshyam00/ImageAnalyzer00/issues)
+- Check existing issues for solutions
+- Review the documentation
+
+---
 
 
 ---
@@ -233,21 +245,7 @@ We welcome contributions! Please feel free to submit a Pull Request. For major c
 
 ---
 
-## License
 
-This project is licensed under the [BSD 3-Clause License](LICENSE) - see the LICENSE file for details.
-
----
-
-## Support
-
-If you encounter any issues or have questions:
-
-- Open an issue on [GitHub Issues](https://github.com/Radheshyam00/ImageAnalyzer00/issues)
-- Check existing issues for solutions
-- Review the documentation
-
----
 
 <div align="center">
 
