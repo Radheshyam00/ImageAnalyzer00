@@ -69,11 +69,12 @@ _Unlock Insights, Transform Images, Empower Decisions_
 
 ```
 ImageAnalyzer00/
-├── ImageAnalyzer.py          # Main application file
-├── requirements.txt          # Python dependencies
-├── .env                     # Environment variables (create this)
-├── LICENSE                  # BSD 3-Clause License
+├── app.py                  # Main application file
+├── requirements.txt        # Python dependencies
+├── .env                    # Environment variables (create this)
+├── LICENSE                 # BSD 3-Clause License
 ├── README.md               # This file
+├── pages/
 └── assets/                 # Additional resources
 ```
 
@@ -119,7 +120,7 @@ ImageAnalyzer00/
 ---
 ## Running the App
 ```bash
-streamlit run ImageAnalyzer.py
+streamlit run app.py
 ```
 
 Open your browser to `http://localhost:8501`
