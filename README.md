@@ -1,6 +1,5 @@
 # Advanced Image Metadata & Security Analyzer(AIMSA)
 <div align="center">
-# IMAGEANALYZER00
 
 _Unlock Insights, Transform Images, Empower Decisions_
 
@@ -9,7 +8,6 @@ _Unlock Insights, Transform Images, Empower Decisions_
 ![Python](https://img.shields.io/badge/python-100%25-blue)
 ![Languages](https://img.shields.io/badge/languages-1-lightgrey)
 
----
 
 **Built with the tools and technologies:**
 
