@@ -25,7 +25,7 @@ _Unlock Insights, Transform Images, Empower Decisions_
 
 ## Overview
 
-**ImageAnalyzer** is a powerful Streamlit-based application for analyzing image files. It supports viewing, editing, and removing metadata, detecting steganographic artifacts, and scanning files with VirusTotal for malware analysis. Ideal for digital forensics, cybersecurity, and privacy auditing.
+**AIMSA (Advanced Image Metadata & Security Analyzer)** is a comprehensive Streamlit-based application designed for in-depth image analysis. Perfect for digital forensics professionals, cybersecurity experts, and privacy-conscious users who need to thoroughly examine image files for metadata, security threats, and hidden content.
 
 ---
 
@@ -161,10 +161,6 @@ Star this repository if you find it helpful!
 </div>
 
 ---
-
-## Overview
-
-**AIMSA (Advanced Image Metadata & Security Analyzer)** is a comprehensive Streamlit-based application designed for in-depth image analysis. Perfect for digital forensics professionals, cybersecurity experts, and privacy-conscious users who need to thoroughly examine image files for metadata, security threats, and hidden content.
 
 ## Key Features
 
