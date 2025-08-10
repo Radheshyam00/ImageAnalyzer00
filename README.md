@@ -121,34 +121,34 @@ Open your browser to `http://localhost:8501`
 
 ---
 
-## 🔍 Overview
+## Overview
 
 **AIMSA (Advanced Image Metadata & Security Analyzer)** is a comprehensive Streamlit-based application designed for in-depth image analysis. Perfect for digital forensics professionals, cybersecurity experts, and privacy-conscious users who need to thoroughly examine image files for metadata, security threats, and hidden content.
 
-## ✨ Key Features
+## Key Features
 
-### 📊 **Comprehensive Analysis**
+### **Comprehensive Analysis**
 - **File Information**: Complete file details including name, size, MIME type, MD5/SHA256 hashes, and magic bytes
 - **EXIF & Metadata Extraction**: Camera information, timestamps, GPS coordinates, and exposure settings
 - **Header Analysis**: File type validation and structural integrity checks
 
-### 🛠️ **Metadata Management**
+### **Metadata Management**
 - **Metadata Editor**: Modify EXIF data in JPEG files
 - **Metadata Removal**: Strip sensitive information for privacy protection
 - **ICC Profile Analysis**: Extract color space and format specifications
 
-### 🔒 **Security Features**
+### **Security Features**
 - **VirusTotal Integration**: Real-time malware scanning (API key required)
 - **Steganography Detection**: Identify hidden data, embedded archives, and entropy anomalies
 - **JFIF Metadata Analysis**: Detailed format information extraction
 
-### 📤 **Export & Reporting**
+### **Export & Reporting**
 - **JSON Reports**: Export complete analysis results
 - **Downloadable Formats**: Save cleaned images and reports
 
 ---
 
-## 🎯 Supported File Formats
+## Supported File Formats
 
 | Format | Extensions | Features |
 |--------|------------|----------|
@@ -161,7 +161,7 @@ Open your browser to `http://localhost:8501`
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.8 or higher
@@ -209,7 +209,7 @@ The application will open in your browser at `http://localhost:8501`
 
 ---
 
-## 💡 Use Cases
+## Use Cases
 
 ### **Digital Forensics**
 - Investigate image authenticity and origin
@@ -233,7 +233,7 @@ The application will open in your browser at `http://localhost:8501`
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### VirusTotal Integration
 To enable malware scanning:
@@ -248,7 +248,7 @@ MONGO_URI=mongodb://username:password@host:port/database
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ImageAnalyzer00/
@@ -262,7 +262,7 @@ ImageAnalyzer00/
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
@@ -274,26 +274,26 @@ We welcome contributions! Please feel free to submit a Pull Request. For major c
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [BSD 3-Clause License](LICENSE) - see the LICENSE file for details.
 
 ---
 
-## 🆘 Support
+## Support
 
 If you encounter any issues or have questions:
 
-- 📧 Open an issue on [GitHub Issues](https://github.com/Radheshyam00/ImageAnalyzer00/issues)
-- 💬 Check existing issues for solutions
-- 📖 Review the documentation
+- Open an issue on [GitHub Issues](https://github.com/Radheshyam00/ImageAnalyzer00/issues)
+- Check existing issues for solutions
+- Review the documentation
 
 ---
 
 <div align="center">
 
-**Made with ❤️ for the cybersecurity and digital forensics community**
+**Made with dedication for the cybersecurity and digital forensics community**
 
-⭐ Star this repository if you find it helpful!
+Star this repository if you find it helpful!
 
 </div>
