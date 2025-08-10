@@ -108,6 +108,34 @@ Open your browser to `http://localhost:8501`
 
 - Check for malware using VirusTotal
 
+## Configuration
+
+### VirusTotal Integration
+To enable malware scanning:
+1. Sign up for a [VirusTotal API key](https://www.virustotal.com/gui/join-us)
+2. Add your API key to the `.env` file or enter it in the application interface
+
+### MongoDB Integration (Optional)
+For enhanced file tracking with File Inspector Pro:
+```env
+MONGO_URI=mongodb://username:password@host:port/database
+```
+
+---
+
+## Contributing
+
+We welcome contributions! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+
 ## License
 
 This project is licensed under the [BSD 3-Clause License](LICENSE) - see the LICENSE file for details.
@@ -124,6 +152,13 @@ If you encounter any issues or have questions:
 
 ---
 
+<div align="center">
+
+**Made with dedication for the cybersecurity and digital forensics community**
+
+Star this repository if you find it helpful!
+
+</div>
 
 ---
 
@@ -218,39 +253,3 @@ If you encounter any issues or have questions:
 
 ---
 
-## Configuration
-
-### VirusTotal Integration
-To enable malware scanning:
-1. Sign up for a [VirusTotal API key](https://www.virustotal.com/gui/join-us)
-2. Add your API key to the `.env` file or enter it in the application interface
-
-### MongoDB Integration (Optional)
-For enhanced file tracking with File Inspector Pro:
-```env
-MONGO_URI=mongodb://username:password@host:port/database
-```
-
----
-
-## Contributing
-
-We welcome contributions! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-
-
-<div align="center">
-
-**Made with dedication for the cybersecurity and digital forensics community**
-
-Star this repository if you find it helpful!
-
-</div>
