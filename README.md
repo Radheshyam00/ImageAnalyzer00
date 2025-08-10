@@ -75,6 +75,9 @@ ImageAnalyzer00/
 ├── LICENSE                 # BSD 3-Clause License
 ├── README.md               # This file
 ├── pages/
+│   ├── file.py             # Handles file upload and processing logic
+│   ├── forensic.py         # Image forensic analysis features
+│   └── metadata.py         # Metadata extraction and processing
 └── assets/                 # Additional resources
 ```
 
