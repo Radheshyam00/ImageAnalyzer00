@@ -3,7 +3,7 @@
 
 _Unlock Insights, Transform Images, Empower Decisions_
 
-![Last Commit](https://img.shields.io/github/last-commit/yourusername/IMAGEANALYZER00?label=last%20commit)
+![Last Commit](https://img.shields.io/github/last-commit/Radheshyam00/IMAGEANALYZER00?label=last%20commit)
 ![Commit Time](https://img.shields.io/badge/yesterday-blue)
 ![Python](https://img.shields.io/badge/python-100%25-blue)
 ![Languages](https://img.shields.io/badge/languages-1-lightgrey)
