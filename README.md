@@ -55,6 +55,20 @@ _Unlock Insights, Transform Images, Empower Decisions_
 
 ---
 
+## Project Structure
+
+```
+ImageAnalyzer00/
+├── ImageAnalyzer.py          # Main application file
+├── requirements.txt          # Python dependencies
+├── .env                     # Environment variables (create this)
+├── LICENSE                  # BSD 3-Clause License
+├── README.md               # This file
+└── assets/                 # Additional resources
+```
+
+---
+
 ## Installation
 
 
@@ -98,28 +112,6 @@ Open your browser to `http://localhost:8501`
 
 [BSD 3-Clause License](LICENSE)
 
-
-
-# Advanced Image Metadata & Security Analyzer (AIMSA)
-
-<div align="center">
-
-*Unlock Insights, Transform Images, Empower Decisions*
-
-[![Last Commit](https://img.shields.io/github/last-commit/Radheshyam00/IMAGEANALYZER00?label=last%20commit)](https://github.com/Radheshyam00/IMAGEANALYZER00)
-[![Python](https://img.shields.io/badge/python-100%25-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-BSD%203--Clause-green)](LICENSE)
-
-### Built with Modern Technologies
-
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
-![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
-![pandas](https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
-![Scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
-![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)
-
-</div>
 
 ---
 
@@ -190,16 +182,6 @@ Open your browser to `http://localhost:8501`
    echo "VIRUSTOTAL_API_KEY=your_api_key" >> .env
    ```
 
-### Running the Application
-
-```bash
-streamlit run ImageAnalyzer.py
-```
-
-The application will open in your browser at `http://localhost:8501`
-
----
-
 ## Use Cases
 
 ### **Digital Forensics**
@@ -235,20 +217,6 @@ To enable malware scanning:
 For enhanced file tracking with File Inspector Pro:
 ```env
 MONGO_URI=mongodb://username:password@host:port/database
-```
-
----
-
-## Project Structure
-
-```
-ImageAnalyzer00/
-├── ImageAnalyzer.py          # Main application file
-├── requirements.txt          # Python dependencies
-├── .env                     # Environment variables (create this)
-├── LICENSE                  # BSD 3-Clause License
-├── README.md               # This file
-└── assets/                 # Additional resources
 ```
 
 ---
