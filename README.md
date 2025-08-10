@@ -69,24 +69,43 @@ ImageAnalyzer00/
 
 ---
 
-## Installation
+## Quick Start
 
+### Prerequisites
+- Python 3.8 or higher
+- pip package manager
 
-```bash
-# Clone the repository
-git clone https://github.com/Radheshyam00/ImageAnalyzer00.git
-cd ImageAnalyzer00
+### Installation
 
-# Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Radheshyam00/ImageAnalyzer00.git
+   cd ImageAnalyzer00
+   ```
 
-# Install dependencies
-pip install -r requirements.txt
+2. **Set up virtual environment**
+   ```bash
+   # Create virtual environment
+   python -m venv venv
+   
+   # Activate (Linux/Mac)
+   source venv/bin/activate
+   
+   # Activate (Windows)
+   venv\Scripts\activate
+   ```
 
-# Create a .env file in the root directory and add
-MONGO_URI=your_mongodb_uri  # optional, for File Inspector Pro
-```
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment** (Optional)
+   ```bash
+   # Create .env file for additional features
+   echo "MONGO_URI=your_mongodb_uri" > .env
+   echo "VIRUSTOTAL_API_KEY=your_api_key" >> .env
+   ```
 ---
 ## Running the App
 ```bash
@@ -187,43 +206,7 @@ Star this repository if you find it helpful!
 
 
 
-## Quick Start
 
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Radheshyam00/ImageAnalyzer00.git
-   cd ImageAnalyzer00
-   ```
-
-2. **Set up virtual environment**
-   ```bash
-   # Create virtual environment
-   python -m venv venv
-   
-   # Activate (Linux/Mac)
-   source venv/bin/activate
-   
-   # Activate (Windows)
-   venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment** (Optional)
-   ```bash
-   # Create .env file for additional features
-   echo "MONGO_URI=your_mongodb_uri" > .env
-   echo "VIRUSTOTAL_API_KEY=your_api_key" >> .env
-   ```
 
 ## Use Cases
 
