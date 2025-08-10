@@ -29,16 +29,26 @@ _Unlock Insights, Transform Images, Empower Decisions_
 
 ---
 
-## Features
+## Key Features
 
-- 📁 File Information: Name, size, MIME type, MD5/SHA256 hash, magic bytes.
-- 🧬 EXIF & Metadata Viewer: Camera info, timestamps, GPS, exposure settings.
-- ✏️ Metadata Editor & Remover: Modify or erase metadata in JPEGs.
-- 🛡️ VirusTotal Integration: Scan images for malware (API key required).
-- 🧠 Steganography Detection: Check for hidden data, embedded ZIPs, and entropy anomalies.
-- 🎨 ICC Profile & JFIF Metadata: Extract color space and format info.
-- 🔎 Header Analysis: Validate file type and structure.
-- 📄 Export JSON Report: Full analysis in downloadable format.
+### **Comprehensive Analysis**
+- **File Information**: Complete file details including name, size, MIME type, MD5/SHA256 hashes, and magic bytes
+- **EXIF & Metadata Extraction**: Camera information, timestamps, GPS coordinates, and exposure settings
+- **Header Analysis**: File type validation and structural integrity checks
+
+### **Metadata Management**
+- **Metadata Editor**: Modify EXIF data in JPEG files
+- **Metadata Removal**: Strip sensitive information for privacy protection
+- **ICC Profile Analysis**: Extract color space and format specifications
+
+### **Security Features**
+- **VirusTotal Integration**: Real-time malware scanning (API key required)
+- **Steganography Detection**: Identify hidden data, embedded archives, and entropy anomalies
+- **JFIF Metadata Analysis**: Detailed format information extraction
+
+### **Export & Reporting**
+- **JSON Reports**: Export complete analysis results
+- **Downloadable Formats**: Save cleaned images and reports
 
 ---
 
@@ -116,16 +126,30 @@ Open your browser to `http://localhost:8501`
 
 ---
 
-## Example Use Cases
-- Audit photo metadata before sharing online
+## Use Cases
 
-- Conduct forensic image analysis
+### **Digital Forensics**
+- Investigate image authenticity and origin
+- Extract hidden metadata for evidence
+- Analyze file structure for tampering
 
-- Remove GPS or timestamp information for privacy
+### **Privacy Protection**
+- Remove GPS coordinates before sharing
+- Strip camera information from photos
+- Clean metadata for anonymous publishing
 
+### **Cybersecurity**
 - Detect steganographic payloads
+- Scan for embedded malware
+- Analyze suspicious image files
 
-- Check for malware using VirusTotal
+### **Content Management**
+- Audit photo collections for sensitive data
+- Batch process metadata removal
+- Validate file integrity
+
+---
+
 
 ## Configuration
 
@@ -181,54 +205,10 @@ Star this repository if you find it helpful!
 
 ---
 
-## Key Features
-
-### **Comprehensive Analysis**
-- **File Information**: Complete file details including name, size, MIME type, MD5/SHA256 hashes, and magic bytes
-- **EXIF & Metadata Extraction**: Camera information, timestamps, GPS coordinates, and exposure settings
-- **Header Analysis**: File type validation and structural integrity checks
-
-### **Metadata Management**
-- **Metadata Editor**: Modify EXIF data in JPEG files
-- **Metadata Removal**: Strip sensitive information for privacy protection
-- **ICC Profile Analysis**: Extract color space and format specifications
-
-### **Security Features**
-- **VirusTotal Integration**: Real-time malware scanning (API key required)
-- **Steganography Detection**: Identify hidden data, embedded archives, and entropy anomalies
-- **JFIF Metadata Analysis**: Detailed format information extraction
-
-### **Export & Reporting**
-- **JSON Reports**: Export complete analysis results
-- **Downloadable Formats**: Save cleaned images and reports
-
----
 
 
 
 
 
-## Use Cases
 
-### **Digital Forensics**
-- Investigate image authenticity and origin
-- Extract hidden metadata for evidence
-- Analyze file structure for tampering
-
-### **Privacy Protection**
-- Remove GPS coordinates before sharing
-- Strip camera information from photos
-- Clean metadata for anonymous publishing
-
-### **Cybersecurity**
-- Detect steganographic payloads
-- Scan for embedded malware
-- Analyze suspicious image files
-
-### **Content Management**
-- Audit photo collections for sensitive data
-- Batch process metadata removal
-- Validate file integrity
-
----
 
