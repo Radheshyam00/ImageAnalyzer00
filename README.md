@@ -42,14 +42,16 @@ _Unlock Insights, Transform Images, Empower Decisions_
 
 ---
 
-## Supported Formats
+## Supported File Formats
 
-- JPEG (.jpg, .jpeg)
-- PNG (.png)
-- TIFF (.tiff)
-- BMP (.bmp)
-- WebP (.webp)
-- GIF (.gif)
+| Format | Extensions | Features |
+|--------|------------|----------|
+| JPEG   | `.jpg`, `.jpeg` | Full metadata editing, EXIF extraction |
+| PNG    | `.png` | Metadata analysis, transparency info |
+| TIFF   | `.tiff`, `.tif` | Multi-page support, compression details |
+| BMP    | `.bmp` | Basic analysis, header validation |
+| WebP   | `.webp` | Modern format support |
+| GIF    | `.gif` | Animation frame analysis |
 
 ---
 
@@ -148,18 +150,7 @@ Open your browser to `http://localhost:8501`
 
 ---
 
-## Supported File Formats
 
-| Format | Extensions | Features |
-|--------|------------|----------|
-| JPEG   | `.jpg`, `.jpeg` | Full metadata editing, EXIF extraction |
-| PNG    | `.png` | Metadata analysis, transparency info |
-| TIFF   | `.tiff`, `.tif` | Multi-page support, compression details |
-| BMP    | `.bmp` | Basic analysis, header validation |
-| WebP   | `.webp` | Modern format support |
-| GIF    | `.gif` | Animation frame analysis |
-
----
 
 ## Quick Start
 
