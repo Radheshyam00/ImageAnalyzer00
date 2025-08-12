@@ -1353,7 +1353,7 @@ if uploaded_file is not None:
             "image_properties": image_props if image else {},
             "jfif_metadata": jfif_info,
             "icc_profile": icc_info,
-            "exif_data": exif_data if image else {},
+            "exif_data": metadata if image else {},
             "steganographic_indicators": steg_indicators,
             "header_analysis": header_analysis,
             "virustotal_scan": st.session_state.get('vt_result', {"status": "not_scanned"}),
